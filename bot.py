@@ -16,8 +16,12 @@ app = Flask(__name__)
 
 TOKEN = '7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww'
 bot = telebot.TeleBot(TOKEN)
-WEBHOOK_URL = "https://py-bot-l0lo.onrender.com/"
-bot.set_webhook(url=WEBHOOK_URL)
+RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
+if not RENDER_URL:
+    raise ValueError("Переменная RENDER_EXTERNAL_URL не установлена!")
+
+WEBHOOK_URL = f"https://{RENDER_URL}/{TOKEN}"
+
 
 #RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
 #if not RENDER_URL:
@@ -273,13 +277,17 @@ def log_all_messages(message):
         
 logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
-@app.route(f"/{TOKEN}", methods=["POST"])
+@app.route("/", methods=["POST"])
 def webhook():
-    """Обработка входящих сообщений от Telegram"""
-    json_str = request.get_data().decode("utf-8")
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return "OK", 200
+    try:
+        json_str = request.get_data().decode("utf-8")
+        logging.info(f"Webhook received: {json_str}")  # Лог входящих данных
+        update = telebot.types.Update.de_json(json_str)
+        bot.process_new_updates([update])
+        return "OK", 200
+    except Exception as e:
+        logging.error(f"Ошибка в вебхуке: {e}")
+        return "Error", 500
 
 @app.route("/", methods=["GET"])
 def home():
@@ -287,8 +295,8 @@ def home():
 if __name__ == "__main__":
     init_db()
     bot.remove_webhook()
-    time.sleep(5)  # Добавьте задержку перед установкой вебхука
-    bot.set_webhook(url=WEBHOOK_URL)  # Устанавливаем вебхук
+    bot.set_webhook(url=WEBHOOK_URL)  # Устанавливаем вебхук без задержки
     port = int(os.environ.get("PORT", 5000))  # Render передаст нужный порт
     app.run(host="0.0.0.0", port=port)
+
 
