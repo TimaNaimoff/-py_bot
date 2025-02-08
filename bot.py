@@ -277,17 +277,16 @@ def log_all_messages(message):
         
 logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
-@app.route("/", methods=["POST"])
+@app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     try:
         json_str = request.get_data().decode("utf-8")
-        logging.info(f"Webhook received: {json_str}")  # Логируем входящий JSON
+        logging.info(f"Webhook received: {json_str}")  # Проверяем, доходят ли запросы
         update = telebot.types.Update.de_json(json_str)
         bot.process_new_updates([update])
-        return "OK", 200, {"Content-Type": "text/plain"}
     except Exception as e:
         logging.error(f"Ошибка в вебхуке: {e}")
-        return "Error", 500, {"Content-Type": "text/plain"}
+    return "OK", 200, {"Content-Type": "text/plain"}
 
 @app.route("/", methods=["GET"])
 def home():
