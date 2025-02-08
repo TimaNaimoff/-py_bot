@@ -284,10 +284,11 @@ def webhook():
 @app.route("/", methods=["GET"])
 def home():
     return "Бот работает!", 200  # Это
-    
 if __name__ == "__main__":
     init_db()
     bot.remove_webhook()
+    time.sleep(5)  # Добавьте задержку перед установкой вебхука
     bot.set_webhook(url=WEBHOOK_URL)  # Устанавливаем вебхук
     port = int(os.environ.get("PORT", 5000))  # Render передаст нужный порт
     app.run(host="0.0.0.0", port=port)
+
