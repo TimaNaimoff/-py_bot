@@ -270,26 +270,19 @@ def log_all_messages(message):
 logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
 
-@app.route('/')
+@app.route("/")
 def home():
-    return "Бот работает!"
+    return "Бот работает!", 200
 
-def run_flask():
-    app.run(host="0.0.0.0", port=8080)
+def safe_polling():
+    """ Функция безопасного запуска бота с повторными попытками при ошибках """
+    while True:
+        try:
+            bot.polling(none_stop=True, timeout=10)
+        except Exception as e:
+            logging.error(f"Ошибка: {e}, перезапуск через 5 сек...")
+            time.sleep(5)
 
 if __name__ == "__main__":
-    try:
-        init_db()
-        import_questions_from_file("bot_dictionary.txt", 10)
-        import_questions_from_file("ru_en.txt", 3)
-        import_questions_from_file("en_ru.txt", 1)
-        logging.info("Бот запущен и готов к работе.")
-
-        # Запускаем Flask в отдельном потоке
-        threading.Thread(target=run_flask).start()
-
-        # Запускаем бота
-        safe_polling()
-        
-    except Exception as e:
-        logging.error(f"Произошла ошибка при запуске бота: {e}")
+    threading.Thread(target=safe_polling, daemon=True).start()  # Запускаем бота в отдельном потоке
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))  # Flask занимает основной процесс
