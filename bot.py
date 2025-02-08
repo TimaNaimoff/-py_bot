@@ -279,13 +279,15 @@ logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    try:
-        json_str = request.get_data().decode("utf-8")
-        logging.info(f"Webhook received: {json_str}")  # Проверяем, доходят ли запросы
-        update = telebot.types.Update.de_json(json_str)
-        bot.process_new_updates([update])
-    except Exception as e:
-        logging.error(f"Ошибка в вебхуке: {e}")
+    def process():
+        try:
+            json_str = request.get_data().decode("utf-8")
+            update = telebot.types.Update.de_json(json_str)
+            bot.process_new_updates([update])
+        except Exception as e:
+            logging.error(f"Ошибка в вебхуке: {e}")
+
+    threading.Thread(target=process).start()
     return "OK", 200, {"Content-Type": "text/plain"}
 
 @app.route("/", methods=["GET"])
@@ -293,9 +295,10 @@ def home():
     return "Бот работает!", 200  # Это
 if __name__ == "__main__":
     init_db()
+    time.sleep(5)  # Даем серверу 5 секунд на запуск
     bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)  # Устанавливаем вебхук без задержки
-    port = int(os.environ.get("PORT", 5000))  # Render передаст нужный порт
+    bot.set_webhook(url=WEBHOOK_URL)  # Устанавливаем вебхук после задержки
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
 
