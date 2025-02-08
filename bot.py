@@ -16,7 +16,7 @@ app = Flask(__name__)
 
 TOKEN = '7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww'
 bot = telebot.TeleBot(TOKEN)
-WEBHOOK_URL = "https://py-bot-l0lo.onrender.com/7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww"
+WEBHOOK_URL = "https://py-bot-l0lo.onrender.com/"
 bot.set_webhook(url=WEBHOOK_URL)
 
 #RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
