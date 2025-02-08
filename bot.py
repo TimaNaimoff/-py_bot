@@ -16,6 +16,7 @@ app = Flask(__name__)
 TOKEN = '7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww'
 bot = telebot.TeleBot(TOKEN)
 
+
 LEVEL_EMOJIS = {
     1: "🐣", 2: "🌱", 3: "🌿", 4: "🌳", 5: "🔥",
     6: "⚡", 7: "💎", 8: "👑", 9: "🚀", 10: "💥"
@@ -269,20 +270,24 @@ def log_all_messages(message):
         
 logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
-
 @app.route("/")
 def home():
-    return "Бот работает!", 200
+    return "Бот работает!", 200  # Это нужно, чтобы Render видел, что сервис активен.
 
 def safe_polling():
-    """ Функция безопасного запуска бота с повторными попытками при ошибках """
+    """ Безопасный запуск бота с повторным запуском при ошибках """
     while True:
         try:
             bot.polling(none_stop=True, timeout=10)
         except Exception as e:
-            logging.error(f"Ошибка: {e}, перезапуск через 5 сек...")
+            logging.error(f"Ошибка: {e}, перезапуск через 5 секунд...")
             time.sleep(5)
 
 if __name__ == "__main__":
-    threading.Thread(target=safe_polling, daemon=True).start()  # Запускаем бота в отдельном потоке
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))  # Flask занимает основной процесс
+    # Запускаем бота в отдельном потоке
+    thread = threading.Thread(target=safe_polling, daemon=True)
+    thread.start()
+
+    # Flask-сервер для Render
+    port = int(os.environ.get("PORT", 5000))  # Render сам передаст нужный порт
+    app.run(host="0.0.0.0", port=port)
