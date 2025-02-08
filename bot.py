@@ -7,6 +7,7 @@ import sys
 import time
 from telebot.types import ReplyKeyboardMarkup
 from flask import Flask
+from flask import request 
 import threading
 
 app = Flask(__name__)
@@ -16,8 +17,10 @@ app = Flask(__name__)
 TOKEN = '7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww'
 bot = telebot.TeleBot(TOKEN)
 
-WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_URL', 'yourdomain.com')}/{TOKEN}"
-
+RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
+if not RENDER_URL:
+    raise ValueError("Переменная RENDER_EXTERNAL_URL не установлена!")
+WEBHOOK_URL = f"https://{RENDER_URL}/{TOKEN}"
 LEVEL_EMOJIS = {
     1: "🐣", 2: "🌱", 3: "🌿", 4: "🌳", 5: "🔥",
     6: "⚡", 7: "💎", 8: "👑", 9: "🚀", 10: "💥"
@@ -242,10 +245,7 @@ def leaderboard(message):
     bot.send_message(message.chat.id, text)
     logging.info(f"Пользователь {message.chat.id} запросил таблицу лидеров.")
 
-if __name__ == "__main__":
-    init_db()
-    logging.info("Бот запущен и готов к работе.")
-    bot.polling(none_stop=True, timeout=10)
+
     
 
 @bot.message_handler(commands=['restart'])
