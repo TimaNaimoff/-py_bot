@@ -20,7 +20,7 @@ RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
 if not RENDER_URL:
     raise ValueError("Переменная RENDER_EXTERNAL_URL не установлена!")
 
-WEBHOOK_URL = f"https://{RENDER_URL}/{TOKEN}"
+WEBHOOK_URL = f"{RENDER_URL}/{TOKEN}"
 
 
 #RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
@@ -281,13 +281,13 @@ logger1 = logging.getLogger(__name__)
 def webhook():
     try:
         json_str = request.get_data().decode("utf-8")
-        logging.info(f"Webhook received: {json_str}")  # Лог входящих данных
+        logging.info(f"Webhook received: {json_str}")  # Логируем входящий JSON
         update = telebot.types.Update.de_json(json_str)
         bot.process_new_updates([update])
-        return "OK", 200
+        return "OK", 200, {"Content-Type": "text/plain"}
     except Exception as e:
         logging.error(f"Ошибка в вебхуке: {e}")
-        return "Error", 500
+        return "Error", 500, {"Content-Type": "text/plain"}
 
 @app.route("/", methods=["GET"])
 def home():
