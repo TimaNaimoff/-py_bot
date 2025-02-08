@@ -266,15 +266,17 @@ logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
 
 def safe_polling():
-    # Запускаем polling и повторяем попытки при ошибках
     while True:
         try:
-            bot.polling(none_stop=True, timeout=10)  # Это вызов, который будет продолжаться до успешного выполнения
+            bot.polling(none_stop=True, timeout=10)  # Постоянный опрос
         except requests.exceptions.ReadTimeout as e:
-            logging.error(f"Тайм-аут при соединении: {e}. Повторим попытку через 5 секунд.")
-            time.sleep(5)  # Ждем 5 секунд перед новой попыткой
+            logger.error(f"⏳ Тайм-аут соединения: {e}. Перезапуск через 5 сек...")
+            time.sleep(5)
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"🚫 Ошибка сети: {e}. Перезапуск через 10 сек...")
+            time.sleep(10)
         except Exception as e:
-            logging.error(f"Произошла ошибка: {e}. Повторим попытку через 5 секунд.")
+            logger.error(f"⚠️ Критическая ошибка: {e}. Перезапуск через 5 сек...")
             time.sleep(5)
 
 if __name__ == "__main__":
