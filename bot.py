@@ -16,6 +16,7 @@ app = Flask(__name__)
 TOKEN = '7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww'
 bot = telebot.TeleBot(TOKEN)
 
+WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_URL', 'yourdomain.com')}/{TOKEN}"
 
 LEVEL_EMOJIS = {
     1: "🐣", 2: "🌱", 3: "🌿", 4: "🌳", 5: "🔥",
@@ -270,24 +271,21 @@ def log_all_messages(message):
         
 logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
-@app.route("/")
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    """Обработка входящих сообщений от Telegram"""
+    json_str = request.get_data().decode("utf-8")
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "OK", 200
+
+@app.route("/", methods=["GET"])
 def home():
-    return "Бот работает!", 200  # Это нужно, чтобы Render видел, что сервис активен.
-
-def safe_polling():
-    """ Безопасный запуск бота с повторным запуском при ошибках """
-    while True:
-        try:
-            bot.polling(none_stop=True, timeout=10)
-        except Exception as e:
-            logging.error(f"Ошибка: {e}, перезапуск через 5 секунд...")
-            time.sleep(5)
-
+    return "Бот работает!", 200  # Это
+    
 if __name__ == "__main__":
-    # Запускаем бота в отдельном потоке
-    thread = threading.Thread(target=safe_polling, daemon=True)
-    thread.start()
-
-    # Flask-сервер для Render
-    port = int(os.environ.get("PORT", 5000))  # Render сам передаст нужный порт
+    init_db()
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)  # Устанавливаем вебхук
+    port = int(os.environ.get("PORT", 5000))  # Render передаст нужный порт
     app.run(host="0.0.0.0", port=port)
