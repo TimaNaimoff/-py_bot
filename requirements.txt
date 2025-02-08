@@ -39,3 +39,5 @@ wheel==0.42.0
 yarl==1.8.2
 zipp==1.0.0
 pyTelegramBotAPI==4.15.3
+Flask==3.0.0
+gunicorn==21.2.0

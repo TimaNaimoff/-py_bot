@@ -6,6 +6,11 @@ import os
 import sys
 import time
 from telebot.types import ReplyKeyboardMarkup
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
 
 
 TOKEN = '7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww'
@@ -265,19 +270,12 @@ def log_all_messages(message):
 logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
 
-def safe_polling():
-    while True:
-        try:
-            bot.polling(none_stop=True, timeout=10)  # Постоянный опрос
-        except requests.exceptions.ReadTimeout as e:
-            logger.error(f"⏳ Тайм-аут соединения: {e}. Перезапуск через 5 сек...")
-            time.sleep(5)
-        except requests.exceptions.ConnectionError as e:
-            logger.error(f"🚫 Ошибка сети: {e}. Перезапуск через 10 сек...")
-            time.sleep(10)
-        except Exception as e:
-            logger.error(f"⚠️ Критическая ошибка: {e}. Перезапуск через 5 сек...")
-            time.sleep(5)
+@app.route('/')
+def home():
+    return "Бот работает!"
+
+def run_flask():
+    app.run(host="0.0.0.0", port=8080)
 
 if __name__ == "__main__":
     try:
@@ -286,6 +284,12 @@ if __name__ == "__main__":
         import_questions_from_file("ru_en.txt", 3)
         import_questions_from_file("en_ru.txt", 1)
         logging.info("Бот запущен и готов к работе.")
-        safe_polling()  # В этом месте начинаем обработку с повторными попытками
+
+        # Запускаем Flask в отдельном потоке
+        threading.Thread(target=run_flask).start()
+
+        # Запускаем бота
+        safe_polling()
+        
     except Exception as e:
         logging.error(f"Произошла ошибка при запуске бота: {e}")
