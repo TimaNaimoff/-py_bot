@@ -16,11 +16,13 @@ app = Flask(__name__)
 
 TOKEN = '7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww'
 bot = telebot.TeleBot(TOKEN)
+WEBHOOK_URL = "https://py-bot-l0lo.onrender.com/7923251790:AAFe9AqjVjlBTzmHEMSkBLtCfRTFlp3Qdww"
+bot.set_webhook(url=WEBHOOK_URL)
 
-RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
-if not RENDER_URL:
-    raise ValueError("Переменная RENDER_EXTERNAL_URL не установлена!")
-WEBHOOK_URL = f"https://{RENDER_URL}/{TOKEN}"
+#RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
+#if not RENDER_URL:
+#    raise ValueError("Переменная RENDER_EXTERNAL_URL не установлена!")
+#WEBHOOK_URL = f"https://{RENDER_URL}/{TOKEN}"
 LEVEL_EMOJIS = {
     1: "🐣", 2: "🌱", 3: "🌿", 4: "🌳", 5: "🔥",
     6: "⚡", 7: "💎", 8: "👑", 9: "🚀", 10: "💥"
