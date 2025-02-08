@@ -20,7 +20,7 @@ RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
 if not RENDER_URL:
     raise ValueError("Переменная RENDER_EXTERNAL_URL не установлена!")
 
-WEBHOOK_URL = f"{RENDER_URL}/{TOKEN}"
+WEBHOOK_URL = f"https://{RENDER_URL}/{TOKEN}"
 
 
 #RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
@@ -80,7 +80,7 @@ def init_db():
         logging.info("База данных инициализирована.")
 def send_main_menu(chat_id):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("/question", "/leaderboard", "/stats", "/restart")
+    markup.add("/question", "/leaderboard", "/stats")#, "/restart")
     bot.send_message(chat_id, "Выберите команду:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
      
@@ -170,10 +170,7 @@ def send_stats(message):
         bot.send_message(message.chat.id, "❌ У вас пока нет статистики.")
 
 
-@bot.message_handler(commands=['restart'])
-def restart(message):
-    bot.send_message(message.chat.id, "🔄 Перезапуск...")
-    os.execl(sys.executable, sys.executable, *sys.argv)
+
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.send_message(message.chat.id, "Привет! Напиши /question, чтобы получить вопрос!")
@@ -277,28 +274,26 @@ def log_all_messages(message):
         
 logging.basicConfig(level=logging.INFO)
 logger1 = logging.getLogger(__name__)
-@app.route(f"/{TOKEN}", methods=["POST"])
+@app.route("/", methods=["POST"])
 def webhook():
-    def process():
-        try:
-            json_str = request.get_data().decode("utf-8")
-            update = telebot.types.Update.de_json(json_str)
-            bot.process_new_updates([update])
-        except Exception as e:
-            logging.error(f"Ошибка в вебхуке: {e}")
-
-    threading.Thread(target=process).start()
-    return "OK", 200, {"Content-Type": "text/plain"}
+    try:
+        json_str = request.get_data().decode("utf-8")
+        logging.info(f"Webhook received: {json_str}")  # Лог входящих данных
+        update = telebot.types.Update.de_json(json_str)
+        bot.process_new_updates([update])
+        return "OK", 200
+    except Exception as e:
+        logging.error(f"Ошибка в вебхуке: {e}")
+        return "Error", 500
 
 @app.route("/", methods=["GET"])
 def home():
     return "Бот работает!", 200  # Это
 if __name__ == "__main__":
     init_db()
-    time.sleep(5)  # Даем серверу 5 секунд на запуск
     bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)  # Устанавливаем вебхук после задержки
-    port = int(os.environ.get("PORT", 5000))
+    time.sleep(5)  # Добавьте задержку перед установкой вебхука
+    bot.set_webhook(url=WEBHOOK_URL)  # Устанавливаем вебхук
+    port = int(os.environ.get("PORT", 5000))  # Render передаст нужный порт
     app.run(host="0.0.0.0", port=port)
-
 
