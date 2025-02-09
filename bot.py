@@ -80,7 +80,7 @@ def init_db():
         logging.info("База данных инициализирована.")
 def send_main_menu(chat_id):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("/question", "/global_rating", "/stats", "/clean")
+    markup.add("/question", "/global_rating", "/stats" , "/screamer","/balance","/clean")
     bot.send_message(chat_id, "Выберите команду:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
      
@@ -288,7 +288,7 @@ def clean(message):
     start(message)
     logging.info(f"Пользователь {message.chat.id} перезапустил бота.")
     
-@bot.message_handler(commands=['stats', 'global_rating', 'clean', 'check_currency'])
+@bot.message_handler(commands=['stats', 'global_rating', 'clean', 'balance'])
 def handle_commands(message):
     command = message.text.strip().lower()
     if command == '/stats':
@@ -297,7 +297,7 @@ def handle_commands(message):
         leaderboard(message)
     elif command == '/clean':
         clean(message)
-    elif command == '/check_currency':
+    elif command == '/balance':
         check_currency(message)
 
 # Функция обновления лазуритов
@@ -312,7 +312,7 @@ def update_user_currency(user_id, difficulty):
         )
         conn.commit()
 
-@bot.message_handler(commands=['check_currency'])
+@bot.message_handler(commands=['balance'])
 def check_currency(message):
     user_id = message.from_user.id
     with sqlite3.connect("quiz.db") as conn:
