@@ -230,6 +230,12 @@ def send_question(message):
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
+def get_hint(word):
+    if len(word) < 3:
+        return word[0] + "*" * (len(word) - 1)  # Если слово короткое, скрываем всё кроме первой буквы
+    middle_index = len(word) // 2
+    hint = word[0] + "*" * (middle_index - 1) + word[middle_index] + "*" * (len(word) - middle_index - 1)
+    return hint
 
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text))
 def check_answer(message):
@@ -239,20 +245,23 @@ def check_answer(message):
 
     if not session:
         return
-    
+
     correct_answer = session["correct_answer"]
     difficulty = session["difficulty"]
     elapsed_time = int(time.time() - session["start_time"])
     user_answer = message.text.strip().lower()
 
     log_event(chat_id, username, f"ответил на вопрос: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
-    
+
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
     else:
-        bot.send_message(chat_id, f"❌ {username}, неверно. Попробуйте ещё раз!")
+        hint = correct_answer[0] + "*" * (len(correct_answer) - 1)  # Подсказка — только первая буква
+        bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква этого слова : {hint}")
+        time.sleep(2)  # Даем время увидеть подсказку
+        send_question(message)  # Автоматически отправляем новый вопрос
 
 
 
