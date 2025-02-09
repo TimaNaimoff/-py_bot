@@ -258,10 +258,10 @@ def check_answer(message):
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
     else:
-        hint = correct_answer[0] + "*" * (len(correct_answer) - 1)  # Подсказка — только первая буква
+        hint = correct_answer[0] + "?" * (len(correct_answer) - 1)  # Подсказка — только первая буква
         bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква этого слова : {hint}")
         time.sleep(2)  # Даем время увидеть подсказку
-        send_question(message)  # Автоматически отправляем новый вопрос
+    send_question(message)  # Автоматически отправляем новый вопрос
 
 
 
