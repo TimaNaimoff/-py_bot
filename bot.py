@@ -198,18 +198,31 @@ def start(message):
 def update_user_stats(user_id, username, difficulty, elapsed_time):
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
+        
+        # Обновление очков пользователя
         cursor.execute(
             "INSERT INTO leaderboard (user_id, username, score) VALUES (?, ?, ?) "
             "ON CONFLICT(user_id) DO UPDATE SET score = leaderboard.score + ?",
             (user_id, username, difficulty, difficulty)
         )
+
+        # Обновление количества правильных ответов в зависимости от сложности
         if difficulty == 1:
             cursor.execute("UPDATE leaderboard SET answers_lvl1 = answers_lvl1 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 3:
             cursor.execute("UPDATE leaderboard SET answers_lvl3 = answers_lvl3 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 10:
             cursor.execute("UPDATE leaderboard SET answers_lvl10 = answers_lvl10 + 1 WHERE user_id = ?", (user_id,))
+
+        # Обновление общего времени ответа
         cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
+
+        # Получаем новое количество очков для расчета уровня
+        new_score = cursor.execute("SELECT score FROM leaderboard WHERE user_id = ?", (user_id,)).fetchone()[0]
+
+        # Обновляем количество лазуритов на основе уровня
+        update_currency(user_id, new_score)
+        
         conn.commit()
 
 
@@ -257,7 +270,7 @@ def check_answer(message):
     if user_answer == correct_answer:
         user_id = message.from_user.id
         update_user_stats(user_id, username, difficulty, elapsed_time)  # Обновление статистики
-        update_currency(user_id, get_user_score(user_id))  # Обновление лазуритов на основе нового уровня
+
         
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
@@ -337,7 +350,7 @@ def check_currency(message):
     logging.info(f"Пользователь {message.from_user.username} проверил баланс: {level} {currency_word}")
 
 
-@bot.message_handler(commands=['screamer'])
+@bot.message_handler(commands=[''])
 def start_anonymous_message(message):
     chat_id = message.chat.id
     with sqlite3.connect("quiz.db") as conn:
