@@ -255,8 +255,10 @@ def check_answer(message):
     log_event(chat_id, username, f"ответил на вопрос так : {user_answer} за {elapsed_time} сек (Правильный ответ: {correct_answer})")
     
     if user_answer == correct_answer:
-        update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
-        update_user_currency(message.from_user.id, difficulty)  # Обновление лазуритов
+        user_id = message.from_user.id
+        update_user_stats(user_id, username, difficulty, elapsed_time)  # Обновление статистики
+        update_currency(user_id, get_user_score(user_id))  # Обновление лазуритов на основе нового уровня
+        
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
     else:
@@ -307,10 +309,11 @@ def handle_commands(message):
         check_currency(message)
 
 def update_currency(user_id, new_score):
-    level = new_score // 2
+    level = get_level(new_score)
+    lazurites = min(level // 3 + 1, 10)  # Формула награды по уровню
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
-        cursor.execute("UPDATE leaderboard SET currency = ? WHERE user_id = ?", (level, user_id))
+        cursor.execute("UPDATE leaderboard SET currency = ? WHERE user_id = ?", (lazurites, user_id))
         conn.commit()
         
 @bot.message_handler(commands=['balance'])
@@ -319,19 +322,14 @@ def check_currency(message):
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         result = cursor.execute(
-            "SELECT currency FROM leaderboard WHERE user_id = ?", (user_id,)
+            "SELECT score FROM leaderboard WHERE user_id = ?", (user_id,)
         ).fetchone()
     
-    level = result[0] if result else 0  # Получаем количество лазуритов из базы
-    if level == 1:
-        currency_word = "лазурит"
-    elif level in [2, 3, 4]:
-        currency_word = "лазурита"
-    else:
-        currency_word = "лазуритов"
-    
+    level = (result[0] // 2) if result else 0  # Количество лазуритов зависит от уровня (каждые 2 уровня +1 лазурит)
+    currency_word = "лазурит" if level == 1 else "лазуритов"
     bot.send_message(message.chat.id, f"💎 У вас {level} {currency_word}!")
     logging.info(f"Пользователь {message.from_user.username} проверил баланс: {level} {currency_word}")
+
 
 @bot.message_handler(commands=['screamer'])
 def screamer(message):
@@ -374,6 +372,7 @@ def send_anonymous_message(message, selected_user):
             logging.info(f"Анонимное сообщение отправлено пользователю {selected_user[1]} от {message.from_user.username}: {message.text}")
         else:
             bot.send_message(message.chat.id, "❌ У вас недостаточно лазуритов для отправки сообщения!")
+
 
 
 @bot.message_handler(func=lambda message: True)
