@@ -302,11 +302,11 @@ def handle_buttons(message):
     if message.text == "Получить вопрос":
         send_question(message)
     elif message.text == "Рейтинги":
-        send_ratings(message)
+        leaderboard(message)
     elif message.text == "Статистика":
         send_stats(message)
     elif message.text == "Обновить":
-        send_update(message)
+        clean(message)
 def is_button(text):
     return text in ["Получить вопрос", "Рейтинги", "Статистика", "Обновить"]
 
