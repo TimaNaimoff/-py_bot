@@ -231,12 +231,12 @@ def send_question(message):
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
 
-@bot.message_handler(func=lambda message: message.chat.id in user_sessions and not message.text.startswith("/"))
+@bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text))
 def check_answer(message):
     chat_id = message.chat.id
     username = message.from_user.username or message.from_user.first_name
     session = user_sessions.get(chat_id)
-    
+
     if not session:
         return
     
@@ -245,11 +245,7 @@ def check_answer(message):
     elapsed_time = int(time.time() - session["start_time"])
     user_answer = message.text.strip().lower()
 
-    # Проверяем, не нажал ли пользователь кнопку
-    if message.text in ["Получить вопрос", "Рейтинги", "Статистика", "Обновить"]:
-        return  # Игнорируем кнопки
-
-    log_event(chat_id, username, f"ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
+    log_event(chat_id, username, f"ответил на вопрос: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
     
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
@@ -257,6 +253,7 @@ def check_answer(message):
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
     else:
         bot.send_message(chat_id, f"❌ {username}, неверно. Попробуйте ещё раз!")
+
 
 
 
