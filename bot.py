@@ -313,7 +313,7 @@ def update_currency(user_id, new_score):
         cursor.execute("UPDATE leaderboard SET currency = ? WHERE user_id = ?", (level, user_id))
         conn.commit()
         
-@bot.message_handler(commands=['check_currency'])
+@bot.message_handler(commands=['balance'])
 def check_currency(message):
     user_id = message.from_user.id
     with sqlite3.connect("quiz.db") as conn:
