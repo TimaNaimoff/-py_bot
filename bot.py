@@ -21,6 +21,10 @@ if not RENDER_URL:
     raise ValueError("Переменная RENDER_EXTERNAL_URL не установлена!")
 
 WEBHOOK_URL = f"{RENDER_URL}/{TOKEN}"
+LEVEL_ORDER = [1, 3, 10]
+
+# Функция получения вопросов без повторов
+user_questions = {}
 
 
 #RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL', '').strip()
@@ -196,21 +200,67 @@ def update_user_stats(user_id, username, difficulty, elapsed_time):
             cursor.execute("UPDATE leaderboard SET answers_lvl10 = answers_lvl10 + 1 WHERE user_id = ?", (user_id,))
         cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
         conn.commit()
-
+def get_next_question(user_id):
+    for difficulty in LEVEL_ORDER:
+        question = get_user_question(user_id, difficulty)
+        if question:
+            return question, difficulty
+    
+    # Если все вопросы закончились, даем рандомный
+    with sqlite3.connect("quiz.db") as conn:
+        cursor = conn.cursor()
+        question = cursor.execute("SELECT word, description, difficulty FROM questions ORDER BY RANDOM() LIMIT 1").fetchone()
+    return question, question[2] if question else None
+def get_user_question(user_id, difficulty):
+    with sqlite3.connect("quiz.db") as conn:
+        cursor = conn.cursor()
+        
+        # Получаем все вопросы данного уровня сложности
+        questions = cursor.execute(
+            "SELECT id, word, description FROM questions WHERE difficulty = ?", (difficulty,)
+        ).fetchall()
+        
+        if not questions:
+            return None
+        
+        # Загружаем уже заданные пользователю вопросы
+        if user_id not in user_questions:
+            user_questions[user_id] = {lvl: set() for lvl in LEVEL_ORDER}
+        
+        available_questions = [q for q in questions if q[0] not in user_questions[user_id][difficulty]]
+        
+        if not available_questions:
+            return None  # Все вопросы данного уровня исчерпаны
+        
+        question = random.choice(available_questions)
+        user_questions[user_id][difficulty].add(question[0])  # Добавляем вопрос в список уже заданных
+        return question
 @bot.message_handler(commands=['question'])
 def send_question(message):
     user_id = message.from_user.id
     username = message.from_user.username or message.from_user.first_name
-    word, description, difficulty = get_random_question()
-    if word:
-        emoji = get_difficulty_emoji(difficulty)
+    question, difficulty = get_next_question(user_id)
+    
+    if question:
+        word, description = question[1], question[2]
+        emoji = {1: "🐣", 3: "👼", 10: "😈"}.get(difficulty, "❓")
         start_time = time.time()
-        bot.send_message(message.chat.id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
-        bot.register_next_step_handler(message, check_answer, correct_answer=word.lower(), difficulty=difficulty, start_time=start_time)
-        log_event(user_id, username, f"получил вопрос: {description} (Ответ: {word})")
+        
+        bot.send_message(
+            message.chat.id,
+            f"**{difficulty} - lvl** {emoji} {description}",
+            parse_mode="Markdown"
+        )
+        
+        bot.register_next_step_handler(
+            message,
+            check_answer,
+            correct_answer=word.lower(),
+            difficulty=difficulty,
+            start_time=start_time
+        )
     else:
-        bot.send_message(message.chat.id, "Нет доступных вопросов. Импортируйте их из файла.")
-
+        bot.send_message(message.chat.id, "Нет доступных вопросов.")
 def check_answer(message, correct_answer, difficulty, start_time):
     if message.text.startswith("/"):
         return  # Игнорируем команды
