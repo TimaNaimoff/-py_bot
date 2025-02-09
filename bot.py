@@ -80,7 +80,7 @@ def init_db():
         logging.info("База данных инициализирована.")
 def send_main_menu(chat_id):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("/question", "/global_rating", "/stats", "/clean")
+    markup.add("Получить вопрос", "Рейтинги", "Статистика", "Обновить")
     bot.send_message(chat_id, "Выберите команду:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
      
