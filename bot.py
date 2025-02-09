@@ -291,9 +291,9 @@ def handle_commands(message):
     command = message.text.strip().lower()
     if command == '/stats':
         send_stats(message)
-    elif command == '/global_rating':
+    if command == '/global_rating':
         leaderboard(message)
-    elif command == '/clean':
+    if command == '/clean':
         clean(message)
 
 
