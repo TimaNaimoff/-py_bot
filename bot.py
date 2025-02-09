@@ -74,14 +74,13 @@ def init_db():
                 answers_lvl1 INTEGER DEFAULT 0,
                 answers_lvl3 INTEGER DEFAULT 0,
                 answers_lvl10 INTEGER DEFAULT 0,
-                total_time INTEGER DEFAULT 0,
-                currency INTEGER DEFAULT 0
+                total_time INTEGER DEFAULT 0
             );
         ''')
         logging.info("База данных инициализирована.")
 def send_main_menu(chat_id):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("/question", "/global_rating", "/stats" , "/screamer","/balance","/clean")
+    markup.add("/question", "/global_rating", "/stats", "/clean")
     bot.send_message(chat_id, "Выберите команду:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
      
@@ -176,20 +175,14 @@ def send_stats(message):
 def start(message):
     welcome_text = (
         "Привет, человек! 🤖✨\n\n"
-        "Я — твой помощник...)) в изучении слов и развитии знаний! 📚💡\n"
+        "Я — твой помощник в изучении слов и развитии знаний! 📚💡\n"
         "Вот что надо знать , чтобы мы сработались:\n\n"
         "🔹 /question — получить случайный вопрос. Проверь свои знания!\n"
         "🔹 /stats — посмотреть свою статистику и уровень.\n"
         "🔹 /global_rating — увидеть топ игроков! 🏆\n"
         "🔹 /clean — очистить чат и перезапустить бота.\n\n"
-        "В нашей с тобой игре есть игровая валюта - 💎 лазуриты , которые выдаются за каждое повышение уровня\n"
-        "Ты можешь использовать их для отправки анонимного сообщения любому участнику , получатель не рассекретит тебя , если будешь осторожен \n"
-        "Стоимость 1 сообщения - 1💎 , поэтому трать с умом! \n"
-        "🔹 /balance — проверить свой кошелек.\n"
-        "🔹 /screamer — отправить анонимное сообщение 🏆\n\n"
-   
+        "🎯 Отвечай на вопросы, зарабатывай очки и прокачивай уровень! 🏅\n"
         "Напиши /question, чтобы начать! 🚀\n"
-        "\nP.S: За сломанную психику , негативные побочные эффекты , аффектацию в виде раздражения , попытки удалить бота , чрезмерной жестикуляции \n и стресс несет ответественность администрация , пожалуйста , не отчаивайтесь , выпейте зеленого чаю , отдохните ....))"
     )
     bot.send_message(message.chat.id, welcome_text)
     send_main_menu(message.chat.id)
@@ -198,31 +191,18 @@ def start(message):
 def update_user_stats(user_id, username, difficulty, elapsed_time):
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
-        
-        # Обновление очков пользователя
         cursor.execute(
             "INSERT INTO leaderboard (user_id, username, score) VALUES (?, ?, ?) "
             "ON CONFLICT(user_id) DO UPDATE SET score = leaderboard.score + ?",
             (user_id, username, difficulty, difficulty)
         )
-
-        # Обновление количества правильных ответов в зависимости от сложности
         if difficulty == 1:
             cursor.execute("UPDATE leaderboard SET answers_lvl1 = answers_lvl1 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 3:
             cursor.execute("UPDATE leaderboard SET answers_lvl3 = answers_lvl3 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 10:
             cursor.execute("UPDATE leaderboard SET answers_lvl10 = answers_lvl10 + 1 WHERE user_id = ?", (user_id,))
-
-        # Обновление общего времени ответа
         cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
-
-        # Получаем новое количество очков для расчета уровня
-        new_score = cursor.execute("SELECT score FROM leaderboard WHERE user_id = ?", (user_id,)).fetchone()[0]
-
-        # Обновляем количество лазуритов на основе уровня
-        update_currency(user_id, new_score)
-        
         conn.commit()
 
 
@@ -268,15 +248,11 @@ def check_answer(message):
     log_event(chat_id, username, f"ответил на вопрос так : {user_answer} за {elapsed_time} сек (Правильный ответ: {correct_answer})")
     
     if user_answer == correct_answer:
-        user_id = message.from_user.id
-        update_user_stats(user_id, username, difficulty, elapsed_time)  # Обновление статистики
-
-        
+        update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
     else:
-        hint = f"Первая буква: {correct_answer[0]}, Средняя буква: {correct_answer[len(correct_answer)//2]}"
-        bot.send_message(chat_id, f"❌ {username}, неверно. Попробуйте ещё раз!\nПодсказка: {hint}")
+        bot.send_message(chat_id, f"❌ {username}, неверно. Попробуйте ещё раз!")
 
 
 @bot.message_handler(commands=['global_rating'])
@@ -309,7 +285,7 @@ def clean(message):
     start(message)
     logging.info(f"Пользователь {message.chat.id} перезапустил бота.")
     
-@bot.message_handler(commands=['stats', 'global_rating', 'clean', 'balance'])
+@bot.message_handler(commands=['stats', 'global_rating', 'clean'])
 def handle_commands(message):
     command = message.text.strip().lower()
     if command == '/stats':
@@ -318,78 +294,6 @@ def handle_commands(message):
         leaderboard(message)
     elif command == '/clean':
         clean(message)
-    elif command == '/balance':
-        check_currency(message)
-
-def update_currency(user_id, new_score):
-    level = get_level(new_score)
-    
-    # Новая формула начисления лазуритов по уровням
-    if level < 3:
-        lazurites = 1
-    else:
-        lazurites = level // 3 + 1  # Например, 3 уровень — 2 лазурита, 6 — 3 лазурита и т. д.
-
-    with sqlite3.connect("quiz.db") as conn:
-        cursor = conn.cursor()
-        cursor.execute("UPDATE leaderboard SET currency = ? WHERE user_id = ?", (lazurites, user_id))
-        conn.commit()
-
-@bot.message_handler(commands=['balance'])
-def check_currency(message):
-    user_id = message.from_user.id
-    with sqlite3.connect("quiz.db") as conn:
-        cursor = conn.cursor()
-        result = cursor.execute(
-            "SELECT score FROM leaderboard WHERE user_id = ?", (user_id,)
-        ).fetchone()
-    
-    level = (result[0] // 2) if result else 0  # Количество лазуритов зависит от уровня (каждые 2 уровня +1 лазурит)
-    currency_word = "лазурит" if level == 1 else "лазуритов"
-    bot.send_message(message.chat.id, f"💎 У вас {level} {currency_word}!")
-    logging.info(f"Пользователь {message.from_user.username} проверил баланс: {level} {currency_word}")
-
-
-@bot.message_handler(commands=[''])
-def start_anonymous_message(message):
-    chat_id = message.chat.id
-    with sqlite3.connect("quiz.db") as conn:
-        cursor = conn.cursor()
-        users = cursor.execute("SELECT user_id, username FROM leaderboard WHERE user_id != ?", (chat_id,)).fetchall()
-    
-    if not users:
-        bot.send_message(chat_id, "❌ Нет доступных пользователей для отправки анонимного сообщения.")
-        return
-
-    keyboard = types.InlineKeyboardMarkup()
-    for user_id, username in users:
-        keyboard.add(types.InlineKeyboardButton(f"📩 {username}", callback_data=f"anon_{user_id}"))
-
-    bot.send_message(chat_id, "Выберите пользователя для анонимного сообщения:", reply_markup=keyboard)
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("anon_"))
-def select_recipient(call):
-    recipient_id = int(call.data.split("_")[1])
-    msg = bot.send_message(call.message.chat.id, "✍ Введите текст сообщения:")
-    bot.register_next_step_handler(msg, lambda msg: send_anonymous_message(msg, recipient_id))
-
-def send_anonymous_message(message, recipient_id):
-    user_id = message.from_user.id
-    with sqlite3.connect("quiz.db") as conn:
-        cursor = conn.cursor()
-        result = cursor.execute("SELECT currency FROM leaderboard WHERE user_id = ?", (user_id,)).fetchone()
-        currency = result[0] if result else 0
-
-        if currency > 0:
-            cursor.execute("UPDATE leaderboard SET currency = currency - 1 WHERE user_id = ?", (user_id,))
-            conn.commit()
-            
-            bot.send_message(recipient_id, f"📨 Вам пришло анонимное сообщение:\n\n{message.text}")
-            bot.send_message(message.chat.id, "✅ Сообщение успешно отправлено!")
-            logging.info(f"Анонимное сообщение отправлено {recipient_id} от {message.from_user.id}: {message.text}")
-        else:
-            bot.send_message(message.chat.id, "❌ У вас недостаточно лазуритов для отправки сообщения!")
-
 
 
 @bot.message_handler(func=lambda message: True)
