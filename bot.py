@@ -80,7 +80,7 @@ def init_db():
         logging.info("База данных инициализирована.")
 def send_main_menu(chat_id):
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("/question", "/leaderboard", "/stats", "/restart")
+    markup.add("/question", "/global_rating", "/stats", "/clean")
     bot.send_message(chat_id, "Выберите команду:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
      
@@ -179,8 +179,8 @@ def start(message):
         "Вот что надо знать , чтобы мы сработались:\n\n"
         "🔹 /question — получить случайный вопрос. Проверь свои знания!\n"
         "🔹 /stats — посмотреть свою статистику и уровень.\n"
-        "🔹 /leaderboard — увидеть топ игроков! 🏆\n"
-        "🔹 /restart — перезапустить бота и обновить базу данных.\n\n"
+        "🔹 /global_rating — увидеть топ игроков! 🏆\n"
+        "🔹 /clean — очистить чат и перезапустить бота.\n\n"
         "🎯 Отвечай на вопросы, зарабатывай очки и прокачивай уровень! 🏅\n"
         "Напиши /question, чтобы начать! 🚀\n"
         "P.S: За сломанную психику , негативные побочные эффекты , аффектацию в виде раздражения , попытки удалить бота , чрезмерной жестикуляции \n и стресс несет ответественность администрация , пожалуйста , не отчаивайтесь , выпейте зеленого чаю , отдохните ....))"
@@ -241,7 +241,7 @@ def check_answer(message, correct_answer, difficulty, start_time):
     send_question(message)
 
 
-@bot.message_handler(commands=['leaderboard'])
+@bot.message_handler(commands=['global_rating'])
 def leaderboard(message):
     with sqlite3.connect("quiz.db") as conn:
         results = conn.execute(
@@ -264,16 +264,13 @@ def leaderboard(message):
 
     
 
-@bot.message_handler(commands=['restart'])
-def restart(message):
+@bot.message_handler(commands=['clean'])
+def clean(message):
     bot.send_message(message.chat.id, "🔄 Перезапуск...")
-    init_db()
-    import_questions_from_file("bot_dictionary.txt", 10)
-    import_questions_from_file("ru_en.txt", 3)
-    import_questions_from_file("en_ru.txt", 1)
-    bot.send_message(message.chat.id, "✅ Бот успешно перезапущен!")
-    send_main_menu(message.chat.id)
+    bot.send_message(message.chat.id, "\u200b")  # Отправляем невидимое сообщение (очистка)
+    start(message)
     logging.info(f"Пользователь {message.chat.id} перезапустил бота.")
+
 
 @bot.message_handler(func=lambda message: True)
 def log_all_messages(message):
