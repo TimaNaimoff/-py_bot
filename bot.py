@@ -231,7 +231,7 @@ def send_question(message):
         bot.send_message(message.chat.id, "Нет доступных вопросов. Импортируйте их из файла.")
 
 
-@bot.message_handler(func=lambda message: message.from_user.id in user_sessions)
+@bot.message_handler(func=lambda message: message.from_user.id in user_sessions and not message.text.startswith("/"))
 def check_answer(message):
     user_id = message.from_user.id
     username = message.from_user.username or message.from_user.first_name
@@ -250,10 +250,9 @@ def check_answer(message):
     if user_answer == correct_answer:
         update_user_stats(user_id, username, difficulty, elapsed_time)
         bot.send_message(message.chat.id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
+        del user_sessions[user_id]  # Удаляем сессию после правильного ответа
     else:
         bot.send_message(message.chat.id, f"❌ {username}, неверно. Попробуйте ещё раз!")
-    
-    del user_sessions[user_id]  # Удаляем сессию после проверки
 
 
 @bot.message_handler(commands=['global_rating'])
@@ -291,9 +290,9 @@ def handle_commands(message):
     command = message.text.strip().lower()
     if command == '/stats':
         send_stats(message)
-    if command == '/global_rating':
+    elif command == '/global_rating':
         leaderboard(message)
-    if command == '/clean':
+    elif command == '/clean':
         clean(message)
 
 
