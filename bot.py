@@ -310,12 +310,18 @@ def handle_commands(message):
 
 def update_currency(user_id, new_score):
     level = get_level(new_score)
-    lazurites = min(level // 3 + 1, 10)  # Формула награды по уровню
+    
+    # Новая формула начисления лазуритов по уровням
+    if level < 3:
+        lazurites = 1
+    else:
+        lazurites = level // 3 + 1  # Например, 3 уровень — 2 лазурита, 6 — 3 лазурита и т. д.
+
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE leaderboard SET currency = ? WHERE user_id = ?", (lazurites, user_id))
         conn.commit()
-        
+
 @bot.message_handler(commands=['balance'])
 def check_currency(message):
     user_id = message.from_user.id
@@ -332,44 +338,42 @@ def check_currency(message):
 
 
 @bot.message_handler(commands=['screamer'])
-def screamer(message):
-    user_id = message.from_user.id
+def start_anonymous_message(message):
+    chat_id = message.chat.id
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
-        users = cursor.execute("SELECT user_id, username FROM leaderboard").fetchall()
-    if not users:
-        bot.send_message(message.chat.id, "❌ Нет доступных пользователей для отправки сообщения.")
-        return
+        users = cursor.execute("SELECT user_id, username FROM leaderboard WHERE user_id != ?", (chat_id,)).fetchall()
     
-    user_list = '\n'.join([f"{idx+1}. {user[1]}" for idx, user in enumerate(users)])
-    bot.send_message(user_id, f"📜 Выберите пользователя для отправки анонимного сообщения:\n{user_list}")
-    bot.register_next_step_handler(message, choose_user, users)
+    if not users:
+        bot.send_message(chat_id, "❌ Нет доступных пользователей для отправки анонимного сообщения.")
+        return
 
-def choose_user(message, users):
-    try:
-        idx = int(message.text.strip()) - 1
-        if 0 <= idx < len(users):
-            selected_user = users[idx]
-            bot.send_message(message.chat.id, "✍️ Введите ваше анонимное сообщение:")
-            bot.register_next_step_handler(message, send_anonymous_message, selected_user)
-        else:
-            bot.send_message(message.chat.id, "❌ Неверный выбор. Попробуйте снова.")
-    except ValueError:
-        bot.send_message(message.chat.id, "❌ Введите номер пользователя.")
+    keyboard = types.InlineKeyboardMarkup()
+    for user_id, username in users:
+        keyboard.add(types.InlineKeyboardButton(f"📩 {username}", callback_data=f"anon_{user_id}"))
 
-def send_anonymous_message(message, selected_user):
+    bot.send_message(chat_id, "Выберите пользователя для анонимного сообщения:", reply_markup=keyboard)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("anon_"))
+def select_recipient(call):
+    recipient_id = int(call.data.split("_")[1])
+    msg = bot.send_message(call.message.chat.id, "✍ Введите текст сообщения:")
+    bot.register_next_step_handler(msg, lambda msg: send_anonymous_message(msg, recipient_id))
+
+def send_anonymous_message(message, recipient_id):
     user_id = message.from_user.id
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         result = cursor.execute("SELECT currency FROM leaderboard WHERE user_id = ?", (user_id,)).fetchone()
         currency = result[0] if result else 0
-        
+
         if currency > 0:
             cursor.execute("UPDATE leaderboard SET currency = currency - 1 WHERE user_id = ?", (user_id,))
             conn.commit()
-            bot.send_message(selected_user[0], f"📨 Вам пришло анонимное сообщение:\n{message.text}")
-            bot.send_message(message.chat.id, "✅ Сообщение отправлено!")
-            logging.info(f"Анонимное сообщение отправлено пользователю {selected_user[1]} от {message.from_user.username}: {message.text}")
+            
+            bot.send_message(recipient_id, f"📨 Вам пришло анонимное сообщение:\n\n{message.text}")
+            bot.send_message(message.chat.id, "✅ Сообщение успешно отправлено!")
+            logging.info(f"Анонимное сообщение отправлено {recipient_id} от {message.from_user.id}: {message.text}")
         else:
             bot.send_message(message.chat.id, "❌ У вас недостаточно лазуритов для отправки сообщения!")
 
