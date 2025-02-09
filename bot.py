@@ -63,8 +63,8 @@ def init_db():
         conn.executescript('''
             CREATE TABLE IF NOT EXISTS questions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                word TEXT UNIQUE,
-                description TEXT,
+                word TEXT,
+                description TEXT UNIQUE,
                 difficulty INTEGER DEFAULT 10
             );
             CREATE TABLE IF NOT EXISTS leaderboard (
@@ -170,7 +170,10 @@ def send_stats(message):
         bot.send_message(message.chat.id, "❌ У вас пока нет статистики.")
 
 
-
+@bot.message_handler(commands=['restart'])
+def restart(message):
+    bot.send_message(message.chat.id, "🔄 Перезапуск...")
+    os.execl(sys.executable, sys.executable, *sys.argv)
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.send_message(message.chat.id, "Привет! Напиши /question, чтобы получить вопрос!")
@@ -278,7 +281,7 @@ logger1 = logging.getLogger(__name__)
 def webhook():
     try:
         json_str = request.get_data().decode("utf-8")
-        logging.info(f"Webhook received: {json_str}")  # Проверяем, доходят ли запросы
+        #logging.info(f"Webhook received: {json_str}")  # Проверяем, доходят ли запросы
         update = telebot.types.Update.de_json(json_str)
         bot.process_new_updates([update])
     except Exception as e:
