@@ -250,10 +250,12 @@ def check_answer(message):
     
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
+        update_user_currency(message.from_user.id, difficulty)  # Обновление лазуритов
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
     else:
-        bot.send_message(chat_id, f"❌ {username}, неверно. Попробуйте ещё раз!")
+        hint = f"Первая буква: {correct_answer[0]}, Средняя буква: {correct_answer[len(correct_answer)//2]}"
+        bot.send_message(chat_id, f"❌ {username}, неверно. Попробуйте ещё раз!\nПодсказка: {hint}")
 
 
 @bot.message_handler(commands=['global_rating'])
@@ -286,7 +288,7 @@ def clean(message):
     start(message)
     logging.info(f"Пользователь {message.chat.id} перезапустил бота.")
     
-@bot.message_handler(commands=['stats', 'global_rating', 'clean'])
+@bot.message_handler(commands=['stats', 'global_rating', 'clean', 'check_currency'])
 def handle_commands(message):
     command = message.text.strip().lower()
     if command == '/stats':
@@ -295,6 +297,61 @@ def handle_commands(message):
         leaderboard(message)
     elif command == '/clean':
         clean(message)
+    elif command == '/check_currency':
+        check_currency(message)
+
+# Функция обновления лазуритов
+def update_user_currency(user_id, difficulty):
+    lazurites = min(difficulty // 3 + 1, 10)  # Формула награды
+    with sqlite3.connect("quiz.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO leaderboard (user_id, username, score) VALUES (?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET score = leaderboard.score + ?",
+            (user_id, username, lazurites, lazurites)
+        )
+        conn.commit()
+
+@bot.message_handler(commands=['check_currency'])
+def check_currency(message):
+    user_id = message.from_user.id
+    with sqlite3.connect("quiz.db") as conn:
+        cursor = conn.cursor()
+        result = cursor.execute(
+            "SELECT score FROM leaderboard WHERE user_id = ?", (user_id,)
+        ).fetchone()
+    lazurites = result[0] if result else 0
+    bot.send_message(message.chat.id, f"💎 У вас {lazurites} лазуритов!")
+
+@bot.message_handler(commands=['screamer'])
+def screamer(message):
+    user_id = message.from_user.id
+    with sqlite3.connect("quiz.db") as conn:
+        cursor = conn.cursor()
+        users = cursor.execute("SELECT user_id, username FROM leaderboard").fetchall()
+    if not users:
+        bot.send_message(message.chat.id, "❌ Нет доступных пользователей для отправки сообщения.")
+        return
+    
+    user_list = '\n'.join([f"{idx+1}. {user[1]}" for idx, user in enumerate(users)])
+    bot.send_message(user_id, f"📜 Выберите пользователя для отправки анонимного сообщения:\n{user_list}")
+    bot.register_next_step_handler(message, choose_user, users)
+
+def choose_user(message, users):
+    try:
+        idx = int(message.text.strip()) - 1
+        if 0 <= idx < len(users):
+            selected_user = users[idx]
+            bot.send_message(message.chat.id, "✍️ Введите ваше анонимное сообщение:")
+            bot.register_next_step_handler(message, send_anonymous_message, selected_user)
+        else:
+            bot.send_message(message.chat.id, "❌ Неверный выбор. Попробуйте снова.")
+    except ValueError:
+        bot.send_message(message.chat.id, "❌ Введите номер пользователя.")
+
+def send_anonymous_message(message, selected_user):
+    bot.send_message(selected_user[0], f"📨 Вам пришло анонимное сообщение:\n{message.text}")
+    bot.send_message(message.chat.id, "✅ Сообщение отправлено!")
 
 
 @bot.message_handler(func=lambda message: True)
