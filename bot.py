@@ -244,8 +244,12 @@ def check_answer(message):
     difficulty = session["difficulty"]
     elapsed_time = int(time.time() - session["start_time"])
     user_answer = message.text.strip().lower()
-    
-    log_event(chat_id, username, f"ответил на вопрос так : {user_answer} за {elapsed_time} сек (Правильный ответ: {correct_answer})")
+
+    # Проверяем, не нажал ли пользователь кнопку
+    if message.text in ["Получить вопрос", "Рейтинги", "Статистика", "Обновить"]:
+        return  # Игнорируем кнопки
+
+    log_event(chat_id, username, f"ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
     
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
@@ -253,6 +257,7 @@ def check_answer(message):
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
     else:
         bot.send_message(chat_id, f"❌ {username}, неверно. Попробуйте ещё раз!")
+
 
 
 @bot.message_handler(commands=['global_rating'])
