@@ -294,6 +294,17 @@ def handle_commands(message):
         leaderboard(message)
     elif command == '/clean':
         clean(message)
+@bot.message_handler(func=lambda message: message.text in ["Получить вопрос", "Рейтинги", "Статистика", "Обновить"])
+def handle_buttons(message):
+    chat_id = message.chat.id
+    if message.text == "Получить вопрос":
+        send_question(message)  # Вызов обработчика /question
+    elif message.text == "Рейтинги":
+        leaderboard(message)  # Вызов обработчика /global_rating
+    elif message.text == "Статистика":
+        send_stats(message)  # Вызов обработчика /stats
+    elif message.text == "Обновить":
+        send_main_menu(chat_id)  # Просто обновление меню
 
 
 @bot.message_handler(func=lambda message: True)
