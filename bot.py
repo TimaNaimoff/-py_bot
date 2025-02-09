@@ -74,7 +74,8 @@ def init_db():
                 answers_lvl1 INTEGER DEFAULT 0,
                 answers_lvl3 INTEGER DEFAULT 0,
                 answers_lvl10 INTEGER DEFAULT 0,
-                total_time INTEGER DEFAULT 0
+                total_time INTEGER DEFAULT 0,
+                currency INTEGER DEFAULT 0
             );
         ''')
         logging.info("База данных инициализирована.")
@@ -305,32 +306,32 @@ def handle_commands(message):
     elif command == '/balance':
         check_currency(message)
 
-# Функция обновления лазуритов
-def update_user_currency(user_id, difficulty):
-    lazurites = min(difficulty // 3 + 1, 10)  # Формула награды
+def update_currency(user_id, new_score):
+    level = new_score // 2
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO leaderboard (user_id, username, score) VALUES (?, ?, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET score = leaderboard.score + ?",
-            (user_id, username, lazurites, lazurites)
-        )
+        cursor.execute("UPDATE leaderboard SET currency = ? WHERE user_id = ?", (level, user_id))
         conn.commit()
-
-@bot.message_handler(commands=['balance'])
+        
+@bot.message_handler(commands=['check_currency'])
 def check_currency(message):
     user_id = message.from_user.id
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         result = cursor.execute(
-            "SELECT score FROM leaderboard WHERE user_id = ?", (user_id,)
+            "SELECT currency FROM leaderboard WHERE user_id = ?", (user_id,)
         ).fetchone()
     
-    level = (result[0] // 2) if result else 0  # Количество лазуритов зависит от уровня (каждые 2 уровня +1 лазурит)
-    currency_word = "лазурит" if level == 1 else "лазуритов"
+    level = result[0] if result else 0  # Получаем количество лазуритов из базы
+    if level == 1:
+        currency_word = "лазурит"
+    elif level in [2, 3, 4]:
+        currency_word = "лазурита"
+    else:
+        currency_word = "лазуритов"
+    
     bot.send_message(message.chat.id, f"💎 У вас {level} {currency_word}!")
     logging.info(f"Пользователь {message.from_user.username} проверил баланс: {level} {currency_word}")
-
 
 @bot.message_handler(commands=['screamer'])
 def screamer(message):
@@ -359,10 +360,20 @@ def choose_user(message, users):
         bot.send_message(message.chat.id, "❌ Введите номер пользователя.")
 
 def send_anonymous_message(message, selected_user):
-    bot.send_message(selected_user[0], f"📨 Вам пришло анонимное сообщение:\n{message.text}")
-    bot.send_message(message.chat.id, "✅ Сообщение отправлено!")
-    logging.info(f"Анонимное сообщение отправлено пользователю {selected_user[1]} от {message.from_user.username}: {message.text}")
-
+    user_id = message.from_user.id
+    with sqlite3.connect("quiz.db") as conn:
+        cursor = conn.cursor()
+        result = cursor.execute("SELECT currency FROM leaderboard WHERE user_id = ?", (user_id,)).fetchone()
+        currency = result[0] if result else 0
+        
+        if currency > 0:
+            cursor.execute("UPDATE leaderboard SET currency = currency - 1 WHERE user_id = ?", (user_id,))
+            conn.commit()
+            bot.send_message(selected_user[0], f"📨 Вам пришло анонимное сообщение:\n{message.text}")
+            bot.send_message(message.chat.id, "✅ Сообщение отправлено!")
+            logging.info(f"Анонимное сообщение отправлено пользователю {selected_user[1]} от {message.from_user.username}: {message.text}")
+        else:
+            bot.send_message(message.chat.id, "❌ У вас недостаточно лазуритов для отправки сообщения!")
 
 
 @bot.message_handler(func=lambda message: True)
