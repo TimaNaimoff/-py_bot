@@ -206,11 +206,12 @@ def update_user_stats(user_id, username, difficulty, elapsed_time):
         cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
         conn.commit()
 
-user_sessions = {}  # Храним текущие вопросы для каждого пользователя
+
+user_sessions = {}  # Храним текущие вопросы для каждого чата
 
 @bot.message_handler(commands=['question'])
 def send_question(message):
-    user_id = message.from_user.id
+    chat_id = message.chat.id  # Теперь учитываем и групповые чаты
     username = message.from_user.username or message.from_user.first_name
     question_data = get_random_question()
     
@@ -219,23 +220,23 @@ def send_question(message):
         emoji = get_difficulty_emoji(difficulty)
         start_time = time.time()
         
-        user_sessions[user_id] = {
+        user_sessions[chat_id] = {
             "correct_answer": word.lower(),
             "difficulty": difficulty,
             "start_time": start_time
         }
         
-        bot.send_message(message.chat.id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
-        log_event(user_id, username, f"получил вопрос: {description} (Ответ: {word})")
+        bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
+        log_event(chat_id, username, f"получил вопрос: {description} (Ответ: {word})")
     else:
-        bot.send_message(message.chat.id, "Нет доступных вопросов. Импортируйте их из файла.")
+        bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
 
-@bot.message_handler(func=lambda message: message.from_user.id in user_sessions and not message.text.startswith("/"))
+@bot.message_handler(func=lambda message: message.chat.id in user_sessions and not message.text.startswith("/"))
 def check_answer(message):
-    user_id = message.from_user.id
+    chat_id = message.chat.id
     username = message.from_user.username or message.from_user.first_name
-    session = user_sessions.get(user_id)
+    session = user_sessions.get(chat_id)
     
     if not session:
         return
@@ -245,14 +246,14 @@ def check_answer(message):
     elapsed_time = int(time.time() - session["start_time"])
     user_answer = message.text.strip().lower()
     
-    log_event(user_id, username, f"ответил на вопрос так : {user_answer} за {elapsed_time} сек (Правильный ответ: {correct_answer})")
+    log_event(chat_id, username, f"ответил на вопрос так : {user_answer} за {elapsed_time} сек (Правильный ответ: {correct_answer})")
     
     if user_answer == correct_answer:
-        update_user_stats(user_id, username, difficulty, elapsed_time)
-        bot.send_message(message.chat.id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
-        del user_sessions[user_id]  # Удаляем сессию после правильного ответа
+        update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
+        bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
+        del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
     else:
-        bot.send_message(message.chat.id, f"❌ {username}, неверно. Попробуйте ещё раз!")
+        bot.send_message(chat_id, f"❌ {username}, неверно. Попробуйте ещё раз!")
 
 
 @bot.message_handler(commands=['global_rating'])
