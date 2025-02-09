@@ -245,19 +245,20 @@ def check_answer(message, correct_answer, difficulty, start_time):
 def leaderboard(message):
     with sqlite3.connect("quiz.db") as conn:
         results = conn.execute(
-            "SELECT username, score FROM leaderboard ORDER BY score DESC LIMIT 10"
+            "SELECT user_id, username, score FROM leaderboard ORDER BY score DESC LIMIT 10"
         ).fetchall()
     
     if results:
-        text = "🏆 Топ игроков:\n"
-        for idx, (username, score) in enumerate(results):
+        text = "🏆 *Топ игроков:*\n\n"
+        for idx, (user_id, username, score) in enumerate(results):
             level = get_level(score)
             emoji = LEVEL_EMOJIS.get(level, "❓")
-            text += f"{idx+1}. {username} ({level} - lvl {emoji}) {score} очк.\n"
+            user_link = f"[{username}](tg://user?id={user_id})"
+            text += f"{idx+1}. {user_link} ({level} - lvl {emoji}) {score} очк.\n"
     else:
-        text = "❌ Рейтинг пока пуст!"
+        text = "❌ *Рейтинг пока пуст!*"
     
-    bot.send_message(message.chat.id, text)
+    bot.send_message(message.chat.id, text, parse_mode="Markdown")
     logging.info(f"Пользователь {message.chat.id} запросил таблицу лидеров.")
 
 
