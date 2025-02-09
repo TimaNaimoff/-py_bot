@@ -170,10 +170,7 @@ def send_stats(message):
         bot.send_message(message.chat.id, "❌ У вас пока нет статистики.")
 
 
-@bot.message_handler(commands=['restart'])
-def restart(message):
-    bot.send_message(message.chat.id, "🔄 Перезапуск...")
-    os.execl(sys.executable, sys.executable, *sys.argv)
+
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.send_message(message.chat.id, "Привет! Напиши /question, чтобы получить вопрос!")
