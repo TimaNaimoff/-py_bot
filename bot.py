@@ -206,39 +206,54 @@ def update_user_stats(user_id, username, difficulty, elapsed_time):
         cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
         conn.commit()
 
+user_sessions = {}  # Храним текущие вопросы для каждого пользователя
+
 @bot.message_handler(commands=['question'])
 def send_question(message):
     user_id = message.from_user.id
     username = message.from_user.username or message.from_user.first_name
-    word, description, difficulty = get_random_question()
-    if word:
+    question_data = get_random_question()
+    
+    if question_data:
+        word, description, difficulty = question_data
         emoji = get_difficulty_emoji(difficulty)
         start_time = time.time()
+        
+        user_sessions[user_id] = {
+            "correct_answer": word.lower(),
+            "difficulty": difficulty,
+            "start_time": start_time
+        }
+        
         bot.send_message(message.chat.id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
-        bot.register_next_step_handler(message, check_answer, correct_answer=word.lower(), difficulty=difficulty, start_time=start_time)
         log_event(user_id, username, f"получил вопрос: {description} (Ответ: {word})")
     else:
         bot.send_message(message.chat.id, "Нет доступных вопросов. Импортируйте их из файла.")
 
-def check_answer(message, correct_answer, difficulty, start_time):
-    if message.text.startswith("/"):
-        return  # Игнорируем команды
-    
+
+@bot.message_handler(func=lambda message: message.from_user.id in user_sessions)
+def check_answer(message):
     user_id = message.from_user.id
     username = message.from_user.username or message.from_user.first_name
+    session = user_sessions.get(user_id)
+    
+    if not session:
+        return
+    
+    correct_answer = session["correct_answer"]
+    difficulty = session["difficulty"]
+    elapsed_time = int(time.time() - session["start_time"])
     user_answer = message.text.strip().lower()
-    elapsed_time = int(time.time() - start_time)
-    log_event(user_id, username, f"ответил на вопрос так : {user_answer} за время : {elapsed_time} (Правильный ответ: {correct_answer})")
+    
+    log_event(user_id, username, f"ответил на вопрос так : {user_answer} за {elapsed_time} сек (Правильный ответ: {correct_answer})")
     
     if user_answer == correct_answer:
-        log_event(user_id, username, f"Правильный ответ")
         update_user_stats(user_id, username, difficulty, elapsed_time)
         bot.send_message(message.chat.id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
     else:
-        log_event(user_id, username, f"Неравильный ответ")
-        bot.send_message(message.chat.id, f"❌ {username}, неверно. Следующий вопрос!")
+        bot.send_message(message.chat.id, f"❌ {username}, неверно. Попробуйте ещё раз!")
     
-    send_question(message)
+    del user_sessions[user_id]  # Удаляем сессию после проверки
 
 
 @bot.message_handler(commands=['global_rating'])
@@ -270,6 +285,16 @@ def clean(message):
     bot.send_message(message.chat.id, "\u200b")  # Отправляем невидимое сообщение (очистка)
     start(message)
     logging.info(f"Пользователь {message.chat.id} перезапустил бота.")
+    
+@bot.message_handler(commands=['stats', 'global_rating', 'clean'])
+def handle_commands(message):
+    command = message.text.strip().lower()
+    if command == '/stats':
+        send_stats(message)
+    elif command == '/global_rating':
+        leaderboard(message)
+    elif command == '/clean':
+        clean(message)
 
 
 @bot.message_handler(func=lambda message: True)
