@@ -97,7 +97,7 @@ def import_questions_from_file(filename, difficulty):
 
             if filename in ["ru_en.txt", "en_ru.txt"]:
                 # Формат: "вопрос ответ" (разделены пробелом)
-                parts = line.split(" ", 1)  # Разделяем только по первому пробелу
+                parts = line.split("\t", 1)  # Разделяем только по первому пробелу
                 if len(parts) < 2:
                     continue
                 word, description = parts[1].strip(), parts[0].strip()  # Переворачиваем вопрос-ответ
