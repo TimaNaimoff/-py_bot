@@ -1,68 +1,117 @@
-crime преступление  
-racism расизм  
-victim жертва  
-wage зарплата  
-gap разрыв  
-world мир  
-ethnic этнический  
-bias предвзятость  
-due обусловленный  
-within внутри  
-strict строгий  
-effort усилие  
-respect уважение  
-modern современный  
-racial расовый  
-civil гражданский  
-reshape преобразовать  
-unrest беспорядки  
-poverty бедность  
-government правительство  
-campaign кампания  
-mobility мобильность  
-inclusion интеграция  
-slavery рабство  
-minority меньшинство  
-diversity разнообразие  
-framework структура  
-rooted укоренившийся  
-initiative инициатива  
-acceptance одобрение  
-eliminate устранить  
-injustice несправедливость  
-exposure воздействие  
-ignorance незнание  
-contemporary актуальный  
-stem происходить  
-tension напряженность  
-perception восприятие  
-enforcement соблюдение  
-prejudice предубеждение  
-either любой  
-systemic системный  
-fuel разжигать  
-worldwide глобальный  
-incorporate включать  
-encouraging поощряющий  
-encourage поддерживать  
-accountable ответственный  
-instability нестабильность  
-colonialism колониализм  
-segregation разделение  
-disparity неравенство  
-persistent устойчивый  
-pressing насущный  
-ingrained укоренившийся  
-profiling профилирование  
-mistrust недоверие  
-exclusionary ограничивающий  
-marginalization маргинализация  
-portrayal изображение  
-reinforce подкреплять  
-consequences последствия  
-manifest проявляться  
-originate брать начало  
-institution учреждение  
-inclusive инклюзивный  
-misunderstanding непонимание  
-prejudices предубеждения  
+hanging table	откидной столик  
+mobile	мобиль (подвесная игрушка для кроватки)  
+diaper	подгузник (амер.)  
+nappy	подгузник (брит.)  
+crib	детская кроватка (амер.)  
+cot	детская кроватка (брит.)  
+high chair	детский стульчик для кормления  
+pacifier	пустышка (амер.)  
+stroller	прогулочная коляска (амер.)  
+baby carriage	детская коляска (амер.)  
+dummy	пустышка (брит.)  
+buggy	прогулочная коляска (брит.)  
+pram	детская коляска (брит.)  
+bottle	бутылочка  
+wet wipe	влажная салфетка  
+moses basket	люлька (переносная)  
+playpen	манеж  
+stair gate	защитные ворота на лестницу  
+baby monitor	радионяня  
+romper suit	комбинезон (для младенца)  
+snowsuit	зимний комбинезон  
+booties	пинетки  
+bodysuit	боди  
+babygro	комбинезон (брит.)  
+rattle	погремушка  
+toy	игрушка  
+soft toy	мягкая игрушка  
+doll	кукла  
+board game	настольная игра  
+playing cards	игральные карты  
+dollhouse	кукольный домик (амер.)  
+doll’s house	кукольный домик (брит.)  
+jump rope	скакалка (амер.)  
+skipping rope	скакалка (брит.)  
+building blocks	строительные блоки  
+bricks	кирпичики (игровые)  
+jigsaw puzzle	пазл  
+train set	игрушечная железная дорога  
+spinning top	юла  
+puppet	кукла-марионетка  
+yo-yo	йо-йо  
+design and technology	технология и дизайн  
+art	искусство  
+psychology	психология  
+philosophy	философия  
+information technology	информационные технологии  
+history	история  
+geography	география  
+math	математика (амер.)  
+music	музыка  
+physical education	физическая культура  
+drama	театральное искусство  
+veterinary medicine	ветеринария  
+science	наука  
+biology	биология  
+physics	физика  
+chemistry	химия  
+maths	математика (брит.)  
+medicine	медицина  
+economics	экономика  
+law	право  
+business studies	бизнес-исследования  
+engineering	инженерия  
+IT	информационные технологии  
+architecture	архитектура  
+languages	иностранные языки  
+geology	геология  
+school	школа  
+class	класс  
+college	колледж  
+university	университет  
+library	библиотека  
+classroom	аудитория  
+exam	экзамен  
+laboratory	лаборатория  
+essay	эссе  
+homework	домашнее задание  
+exercise book	тетрадь для упражнений  
+textbook	учебник  
+thesis	диссертация  
+lecture	лекция  
+test	тест  
+diploma	диплом  
+qualification	квалификация  
+degree	ученая степень  
+teacher	учитель  
+professor	профессор  
+lecturer	преподаватель (в вузе)  
+student	студент  
+graduate	выпускник  
+to study a subject	изучать предмет  
+to review	повторять  
+to revise	готовиться к экзамену  
+to sit an exam	сдавать экзамен  
+to pass	сдать (экзамен)  
+to fail	провалить (экзамен)  
+to resit	пересдавать  
+to look up to someone	восхищаться кем-то, уважать  
+to bring up someone / bring someone up	воспитывать кого-то  
+to get along/get on with someone	ладить с кем-то  
+to take after someone	пойти в кого-то, унаследовать черты  
+to grow up	вырастать  
+to fall out with someone	поссориться с кем-то  
+to fall in love with someone	влюбиться в кого-то  
+to break up with someone	расстаться с кем-то  
+to drift apart	отдаляться друг от друга  
+to make friends with someone	подружиться с кем-то  
+a close friend	близкий друг  
+to have something in common	иметь что-то общее  
+to give birth to someone	родить кого-то  
+to see eye to eye with someone	разделять чье-то мнение, соглашаться  
+to run in the family	быть семейной чертой  
+to click with someone	найти общий язык с кем-то  
+to bump into someone	случайно встретить кого-то  
+to put your foot down	проявить твердость  
+to stick up for someone	заступиться за кого-то  
+to think the world of someone	души не чаять в ком-то
