@@ -259,14 +259,16 @@ def check_answer(message):
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
+        
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
+        time.sleep(1)  # Даем немного времени
+        send_question(message)  # Теперь всегда дается новый вопрос
+
     else:
         hint = correct_answer[0] + "?" * (len(correct_answer) - 1)  # Подсказка — только первая буква
-        bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква этого слова : {hint}")
+        bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква этого слова: {hint}")
         time.sleep(2)  # Даем время увидеть подсказку
-    
-    if chat_id not in user_sessions:  # Проверяем, осталась ли активная сессия
-        send_question(message)  # Автоматически отправляем новый вопрос только один раз
+        send_question(message)  # Новый вопрос даже при ошибке
 
 
 
