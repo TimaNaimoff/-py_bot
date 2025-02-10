@@ -254,22 +254,23 @@ def check_answer(message):
     elapsed_time = int(time.time() - session["start_time"])
     user_answer = message.text.strip().lower()
 
-    log_event(chat_id, username, f"ответил на вопрос: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
+    log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
 
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
-        
         del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
-        time.sleep(1)  # Даем немного времени
-        send_question(message)  # Теперь всегда дается новый вопрос
-
     else:
-        hint = correct_answer[0] + "?" * (len(correct_answer) - 1)  # Подсказка — только первая буква
-        bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква этого слова: {hint}")
-        time.sleep(2)  # Даем время увидеть подсказку
-        send_question(message)  # Новый вопрос даже при ошибке
+        hint = correct_answer[0] + "?" * (len(correct_answer) - 1)  
+        bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква: {hint}")
+        time.sleep(2)  
 
+    # Проверяем, отправлялся ли уже новый вопрос
+    if session.get("new_question_sent"):
+        return  # Если уже отправляли новый вопрос, то не отправляем снова
+
+    session["new_question_sent"] = True  # Устанавливаем флаг, что новый вопрос уже отправлен
+    send_question(message)  # Отправляем новый вопрос
 
 
 
