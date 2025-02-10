@@ -41,6 +41,9 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger()
+
+logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
 for handler in logger.handlers:
     handler.flush()  #  
 def log_event(user_id, username, event):
@@ -261,7 +264,10 @@ def check_answer(message):
         hint = correct_answer[0] + "?" * (len(correct_answer) - 1)  # Подсказка — только первая буква
         bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква этого слова : {hint}")
         time.sleep(2)  # Даем время увидеть подсказку
-    send_question(message)  # Автоматически отправляем новый вопрос
+    
+    if chat_id not in user_sessions:  # Проверяем, осталась ли активная сессия
+        send_question(message)  # Автоматически отправляем новый вопрос только один раз
+
 
 
 
@@ -329,8 +335,7 @@ def log_all_messages(message):
     except Exception as e:
         logging.error(f"Ошибка при логировании сообщения: {e}")
         
-logging.basicConfig(level=logging.INFO)
-logger1 = logging.getLogger(__name__)
+
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     try:
