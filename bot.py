@@ -91,7 +91,7 @@ def send_main_menu(chat_id):
         InlineKeyboardButton("Обновить", callback_data="clean")
     ]
     markup.add(*buttons)
-    bot.send_message(chat_id, "Выберите команду:", reply_markup=markup)
+    bot.send_message(chat_id, "Список команд:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
      
 def import_questions_from_file(filename, difficulty):
