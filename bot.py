@@ -83,14 +83,16 @@ def init_db():
         ''')
         logging.info("База данных инициализирована.")
 def send_main_menu(chat_id):
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(
-        types.InlineKeyboardButton("📊 Статистика", callback_data="stats"),
-        types.InlineKeyboardButton("🏆 Рейтинг", callback_data="rating"),
-    )
-    keyboard.add(types.InlineKeyboardButton("🧹 Очистить", callback_data="clean"))
-    
-    bot.send_message(chat_id, "📌 Главное меню:", reply_markup=keyboard)
+    markup = InlineKeyboardMarkup(row_width=2)
+    buttons = [
+        InlineKeyboardButton("Получить вопрос", callback_data="get_question"),
+        InlineKeyboardButton("Рейтинги", callback_data="leaderboard"),
+        InlineKeyboardButton("Статистика", callback_data="stats"),
+        InlineKeyboardButton("Обновить", callback_data="clean")
+    ]
+    markup.add(*buttons)
+    bot.send_message(chat_id, "Выберите команду:", reply_markup=markup)
+    logging.info(f"Пользователь {chat_id} открыл главное меню.")
      
 def import_questions_from_file(filename, difficulty):
     with sqlite3.connect("quiz.db") as conn, open(filename, "r", encoding="utf-8") as file:
@@ -269,7 +271,7 @@ def check_answer(message):
     user_answer = message.text.strip().lower()
 
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
-    
+
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
         bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
@@ -278,13 +280,12 @@ def check_answer(message):
         hint = correct_answer[0] + "?" * (len(correct_answer) - 1)  
         bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква: {hint}")
         time.sleep(2)  
-     
+
     # Проверяем, отправлялся ли уже новый вопрос
     if session.get("new_question_sent"):
         return  # Если уже отправляли новый вопрос, то не отправляем снова
-    send_main_menu(chat_id)  
+    send_main_menu(chat_id)
     session["new_question_sent"] = True  # Устанавливаем флаг, что новый вопрос уже отправлен
-    
     send_question(message)  # Отправляем новый вопрос
 
 
