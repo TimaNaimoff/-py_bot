@@ -1,39 +1,39 @@
 откидной столик	hanging table  
-мобиль (подвесная игрушка для кроватки)	mobile  
-подгузник (амер.)	diaper  
-подгузник (брит.)	nappy  
-детская кроватка (амер.)	crib  
-детская кроватка (брит.)	cot  
+мобиль	mobile  
+подгузник	diaper  
+подгузник	nappy  
+детская кроватка	crib  
+детская кроватка	cot  
 детский стульчик для кормления	high chair  
-пустышка (амер.)	pacifier  
-прогулочная коляска (амер.)	stroller  
-детская коляска (амер.)	baby carriage  
-пустышка (брит.)	dummy  
-прогулочная коляска (брит.)	buggy  
-детская коляска (брит.)	pram  
+пустышка	pacifier  
+прогулочная коляска	stroller  
+детская коляска	baby carriage  
+пустышка	dummy  
+прогулочная коляска	buggy  
+детская коляска	pram  
 бутылочка	bottle  
 влажная салфетка	wet wipe  
-люлька (переносная)	moses basket  
+люлька	moses basket  
 манеж	playpen  
 защитные ворота на лестницу	stair gate  
 радионяня	baby monitor  
-комбинезон (для младенца)	romper suit  
+комбинезон	romper suit  
 зимний комбинезон	snowsuit  
 пинетки	booties  
 боди	bodysuit  
-комбинезон (брит.)	babygro  
+комбинезон	babygro  
 погремушка	rattle  
 игрушка	toy  
 мягкая игрушка	soft toy  
 кукла	doll  
 настольная игра	board game  
 игральные карты	playing cards  
-кукольный домик (амер.)	dollhouse  
-кукольный домик (брит.)	doll’s house  
-скакалка (амер.)	jump rope  
-скакалка (брит.)	skipping rope  
+кукольный домик	dollhouse  
+кукольный домик	doll’s house  
+скакалка	jump rope  
+скакалка	skipping rope  
 строительные блоки	building blocks  
-кирпичики (игровые)	bricks  
+кирпичики	bricks  
 пазл	jigsaw puzzle  
 игрушечная железная дорога	train set  
 юла	spinning top  
@@ -46,7 +46,7 @@
 информационные технологии	information technology  
 история	history  
 география	geography  
-математика (амер.)	math  
+математика	math  
 музыка	music  
 физическая культура	physical education  
 театральное искусство	drama  
@@ -55,7 +55,7 @@
 биология	biology  
 физика	physics  
 химия	chemistry  
-математика (брит.)	maths  
+математика	maths  
 медицина	medicine  
 экономика	economics  
 право	law  
@@ -85,15 +85,15 @@
 ученая степень	degree  
 учитель	teacher  
 профессор	professor  
-преподаватель (в вузе)	lecturer  
+преподаватель	lecturer  
 студент	student  
 выпускник	graduate  
 изучать предмет	to study a subject  
 повторять	to review  
 готовиться к экзамену	to revise  
 сдавать экзамен	to sit an exam  
-сдать (экзамен)	to pass  
-провалить (экзамен)	to fail  
+сдать 	to pass  
+провалить 	to fail  
 пересдавать	to resit  
 восхищаться кем-то, уважать	to look up to someone  
 воспитывать кого-то	to bring up someone / bring someone up  
