@@ -82,8 +82,14 @@ def init_db():
         ''')
         logging.info("База данных инициализирована.")
 def send_main_menu(chat_id):
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("Получить вопрос", "Рейтинги", "Статистика", "Обновить")
+    markup = InlineKeyboardMarkup(row_width=2)
+    buttons = [
+        InlineKeyboardButton("Получить вопрос", callback_data="get_question"),
+        InlineKeyboardButton("Рейтинги", callback_data="leaderboard"),
+        InlineKeyboardButton("Статистика", callback_data="stats"),
+        InlineKeyboardButton("Обновить", callback_data="clean")
+    ]
+    markup.add(*buttons)
     bot.send_message(chat_id, "Выберите команду:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
      
@@ -306,15 +312,19 @@ def clean(message):
     start(message)
     logging.info(f"Пользователь {message.chat.id} перезапустил бота.")
     
-@bot.message_handler(commands=['stats', 'global_rating', 'clean'])
-def handle_commands(message):
-    command = message.text.strip().lower()
-    if command == '/stats':
-        send_stats(message)
-    elif command == '/global_rating':
-        leaderboard(message)
-    elif command == '/clean':
-        clean(message)
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callback(call):
+    chat_id = call.message.chat.id
+    if call.data == "get_question":
+        send_question(call.message)
+    elif call.data == "leaderboard":
+        leaderboard(call.message)
+    elif call.data == "stats":
+        send_stats(call.message)
+    elif call.data == "clean":
+        clean(call.message)
+    bot.answer_callback_query(call.id)  # Закрываем уведомление о нажатии
+
 @bot.message_handler(func=lambda message: is_button(message.text))
 def handle_buttons(message):
     chat_id = message.chat.id
