@@ -247,6 +247,14 @@ def get_hint(word):
     middle_index = len(word) // 2
     hint = word[0] + "*" * (middle_index - 1) + word[middle_index] + "*" * (len(word) - middle_index - 1)
     return hint
+@bot.message_handler(commands=['stats', 'global_rating', 'clean'])
+def handle_commands(message):
+    if message.text == '/stats':
+        send_stats(message)
+    elif message.text == '/global_rating':
+        leaderboard(message)
+    elif message.text == '/clean':
+        clean(message)
 
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text))
 def check_answer(message):
