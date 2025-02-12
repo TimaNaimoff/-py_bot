@@ -249,9 +249,9 @@ def send_question(message):
 
 def get_hint(word):
     if len(word) < 3:
-        return word[0] + "*" * (len(word) - 1)  # Если слово короткое, скрываем всё кроме первой буквы
+        return word[0] + "$" * (len(word) - 1)  # Если слово короткое, скрываем всё кроме первой буквы
     middle_index = len(word) // 2
-    hint = word[0] + "*" * (middle_index - 1) + word[middle_index] + "*" * (len(word) - middle_index - 1)
+    hint = word[0] + "$" * (middle_index - 1) + word[middle_index] + "$" * (len(word) - middle_index - 1)
     return hint
 @bot.message_handler(commands=['stats', 'global_rating', 'clean'])
 def handle_commands(message):
