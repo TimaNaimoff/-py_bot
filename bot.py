@@ -262,6 +262,35 @@ def handle_commands(message):
     elif message.text == '/clean':
         clean(message)
 
+import time
+from telebot import TeleBot
+
+bot = TeleBot("YOUR_BOT_TOKEN")
+
+user_sessions = {}  # Хранение текущих сессий пользователей
+
+def log_event(chat_id, username, message):
+    print(f"[LOG] ({chat_id}) {username}: {message}")
+
+def update_user_stats(user_id, username, difficulty, elapsed_time):
+    # Здесь можно добавить сохранение статистики в БД
+    print(f"Обновление статистики: {username} (ID: {user_id}), сложность: {difficulty}, время: {elapsed_time} сек.")
+
+def get_hint(correct_answer):
+    # Простая подсказка — первая и последняя буквы слова
+    return f"{correct_answer[0]}...{correct_answer[-1]}"
+
+def is_button(text):
+    # Проверяем, является ли сообщение кнопкой (например, "Меню", "Назад" и т. д.)
+    return text in ["Меню", "Назад", "Помощь"]
+
+def send_main_menu(chat_id):
+    bot.send_message(chat_id, "🔹 Выберите действие из меню.")
+
+def send_question(message):
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "❓ Вот новое задание!")
+
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text))
 def check_answer(message):
     chat_id = message.chat.id
@@ -280,19 +309,42 @@ def check_answer(message):
 
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
-        bot.send_message(chat_id, f"✅ {username}, верно! ({difficulty} балл.)\nСлово: {correct_answer}")
-        del user_sessions[chat_id]  # Удаляем сессию после правильного ответа
-    else:
-        hint = correct_answer[0] + "?" * (len(correct_answer) - 1)  
-        bot.send_message(chat_id, f"❌ {username}, неверно. Первая буква: {hint}")
-        time.sleep(2)  
 
-    # Проверяем, отправлялся ли уже новый вопрос
+        # Тут потом поставлю фирменный фразы
+        if difficulty == 1:
+            success_message = f"✅ {username}, Ну , неплохо 🎉\nСлово: {correct_answer}"
+        elif difficulty == 3:
+            success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
+        elif difficulty == 10:
+            success_message = f"🔥 {username}, Умничка ! 💪\nСлово: {correct_answer}"
+        else:
+            success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
+
+        bot.send_message(chat_id, success_message)
+        del user_sessions[chat_id]  # временное решение
+
+    else:
+        # и тут
+        if difficulty == 1:
+            feedback = f"😕 {username}, балони йепсан! Подумай ещё раз."
+        elif difficulty == 3:
+            feedback = f"🤨 {username}, это что за ответ ?!?!?!?. Марш учить !"
+        elif difficulty == 10:
+            feedback = f"🔥 {username}, мозг вышел из чата"
+        else:
+            feedback = f"❌ {username}, неверно. Попробуй снова."
+
+        hint = get_hint(correct_answer)
+        bot.send_message(chat_id, f"{feedback}\nПодсказка: {hint}")
+        time.sleep(2)
+
     if session.get("new_question_sent"):
-        return  # Если уже отправляли новый вопрос, то не отправляем снова
+        return
+
     send_main_menu(chat_id)
-    session["new_question_sent"] = True  # Устанавливаем флаг, что новый вопрос уже отправлен
-    send_question(message)  # Отправляем новый вопрос
+    session["new_question_sent"] = True
+    send_question(message)
+
 
 
 
