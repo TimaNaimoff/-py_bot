@@ -308,7 +308,7 @@ def check_answer(message):
 
         hint = get_hint(correct_answer)
         bot.send_message(chat_id, f"{feedback}\nПодсказка: {hint}")
-        time.sleep(2)
+        time.sleep(4)
 
     if session.get("new_question_sent"):
         return
