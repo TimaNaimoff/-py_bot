@@ -159,25 +159,31 @@ def send_files(message):
         bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
 
-@bot.message_handler(commands=['stats'])
-def send_stats(message):
-    user_id = message.from_user.id
+def send_stats(data):
+    if isinstance(data, telebot.types.Message):
+        user_id = data.from_user.id
+        chat_id = data.chat.id
+    else:  # Если это callback от кнопки
+        user_id = data.from_user.id
+        chat_id = data.message.chat.id
+    
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         stats = cursor.execute(
             "SELECT score, answers_lvl1, answers_lvl3, answers_lvl10, total_time FROM leaderboard WHERE user_id = ?",
             (user_id,)
         ).fetchone()
+    
     if stats:
         score, lvl1, lvl3, lvl10, total_time = stats
         level = get_level(score)
         emoji = LEVEL_EMOJIS.get(level, "❓")
         bot.send_message(
-            message.chat.id,
+            chat_id,
             f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n😈 Сложные: {lvl10}\n⏳ Общее время: {total_time} сек"
         )
     else:
-        bot.send_message(message.chat.id, "❌ У вас пока нет статистики.")
+        bot.send_message(chat_id, "❌ У вас пока нет статистики.")
 
 
 
@@ -329,7 +335,7 @@ def handle_callback(call):
     elif call.data == "leaderboard":
         leaderboard(call.message)
     elif call.data == "stats":
-        send_stats(call.message)
+        send_stats(call)
     elif call.data == "clean":
         clean(call.message)
     bot.answer_callback_query(call.id)  # Закрываем уведомление о нажатии
