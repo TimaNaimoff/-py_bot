@@ -262,34 +262,6 @@ def handle_commands(message):
     elif message.text == '/clean':
         clean(message)
 
-import time
-from telebot import TeleBot
-
-bot = TeleBot("YOUR_BOT_TOKEN")
-
-user_sessions = {}  # Хранение текущих сессий пользователей
-
-def log_event(chat_id, username, message):
-    print(f"[LOG] ({chat_id}) {username}: {message}")
-
-def update_user_stats(user_id, username, difficulty, elapsed_time):
-    # Здесь можно добавить сохранение статистики в БД
-    print(f"Обновление статистики: {username} (ID: {user_id}), сложность: {difficulty}, время: {elapsed_time} сек.")
-
-def get_hint(correct_answer):
-    # Простая подсказка — первая и последняя буквы слова
-    return f"{correct_answer[0]}...{correct_answer[-1]}"
-
-def is_button(text):
-    # Проверяем, является ли сообщение кнопкой (например, "Меню", "Назад" и т. д.)
-    return text in ["Меню", "Назад", "Помощь"]
-
-def send_main_menu(chat_id):
-    bot.send_message(chat_id, "🔹 Выберите действие из меню.")
-
-def send_question(message):
-    chat_id = message.chat.id
-    bot.send_message(chat_id, "❓ Вот новое задание!")
 
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text))
 def check_answer(message):
@@ -314,7 +286,7 @@ def check_answer(message):
         if difficulty == 1:
             success_message = f"✅ {username}, Ну , неплохо ! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
-            success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
+            success_message = f"🎯 {username}, А ты не промах  🚀\nСлово: {correct_answer}"
         elif difficulty == 10:
             success_message = f"🔥 {username}, Умничка ! 💪\nСлово: {correct_answer}"
         else:
