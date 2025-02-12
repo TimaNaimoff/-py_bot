@@ -312,7 +312,7 @@ def check_answer(message):
 
         # Тут потом поставлю фирменный фразы
         if difficulty == 1:
-            success_message = f"✅ {username}, Ну , неплохо 🎉\nСлово: {correct_answer}"
+            success_message = f"✅ {username}, Ну , неплохо ! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
             success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
         elif difficulty == 10:
