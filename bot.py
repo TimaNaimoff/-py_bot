@@ -93,9 +93,6 @@ def send_main_menu(chat_id):
     markup.add(*buttons)
     bot.send_message(chat_id, "Список команд:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
-@bot.message_handler(func=lambda message: message.text.startswith("#"))
-def ignore_comments(message):
-    pass  # Просто игнорируем сообщения с #
      
 def import_questions_from_file(filename, difficulty):
     with sqlite3.connect("quiz.db") as conn, open(filename, "r", encoding="utf-8") as file:
@@ -266,7 +263,7 @@ def handle_commands(message):
         clean(message)
 
 
-@bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text))
+@bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text) and not message.text.startswith("#"))
 def check_answer(message):
     chat_id = message.chat.id
     username = message.from_user.username or message.from_user.first_name
@@ -285,7 +282,6 @@ def check_answer(message):
     if user_answer == correct_answer:
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
 
-        # Тут потом поставлю фирменный фразы
         if difficulty == 1:
             success_message = f"✅ {username}, Ну , неплохо ! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
@@ -296,10 +292,9 @@ def check_answer(message):
             success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
 
         bot.send_message(chat_id, success_message)
-        del user_sessions[chat_id]  # временное решение
+        del user_sessions[chat_id]  
 
     else:
-        # и тут
         if difficulty == 1:
             feedback = f"😕 {username}, балони йепсан! Подумай ещё раз."
         elif difficulty == 3:
