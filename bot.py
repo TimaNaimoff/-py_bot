@@ -93,6 +93,9 @@ def send_main_menu(chat_id):
     markup.add(*buttons)
     bot.send_message(chat_id, "Список команд:", reply_markup=markup)
     logging.info(f"Пользователь {chat_id} открыл главное меню.")
+@bot.message_handler(func=lambda message: message.text.startswith("#"))
+def ignore_comments(message):
+    pass  # Просто игнорируем сообщения с #
      
 def import_questions_from_file(filename, difficulty):
     with sqlite3.connect("quiz.db") as conn, open(filename, "r", encoding="utf-8") as file:
