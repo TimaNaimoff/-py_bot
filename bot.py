@@ -220,7 +220,7 @@ def start(message):
     logging.info(f"Пользователь {message.chat.id} начал работу с ботом.")
     logger.handlers[0].flush()  # Принудительная запись в ло
 def update_user_stats(user_id, username, difficulty, elapsed_time):
-    log_event(chat_id, username, f"992")
+    log_event(user_id, username, f"992")
     with sqlite3.connect("quiz.db") as conn:
         log_event(chat_id, username, f"999")
         try:
@@ -341,7 +341,7 @@ def check_answer(message):
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
 
     if user_answer == correct_answer:
-
+         
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
 
         if difficulty == 1:
