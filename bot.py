@@ -242,7 +242,9 @@ def update_user_stats(user_id, username, difficulty, elapsed_time):
                 cursor.execute("UPDATE leaderboard SET answers_lvl15 = answers_lvl15 + 1 WHERE user_id = ?", (user_id,))
             log_event(user_id, username, f"5")
             cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
+            log_event(user_id, username, f"6")
             conn.commit()
+            log_event(user_id, username, f"7")
     except sqlite3.Error as e:
         log_event(user_id, username, f"❌ Ошибка работы с БД: {e}")
 
@@ -340,9 +342,9 @@ def check_answer(message):
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
 
     if user_answer == correct_answer:
-         
+        log_event(user_id, username, f"8") 
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
-
+       
         if difficulty == 1:
             success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
@@ -354,8 +356,9 @@ def check_answer(message):
         elif difficulty == 15:
             success_message = f"🎻 {username},  Можешь , станешь музыкантом ? Великолепно ✨\nСлово: {correct_answer}"
         else:
+            log_event(user_id, username, f"9")
             success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
-
+        log_event(user_id, username, f"10")
         # Озвучка правильного ответа
         tts_file = speak_text(correct_answer)
         audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
@@ -364,6 +367,7 @@ def check_answer(message):
         #markup = InlineKeyboardMarkup()
         #markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
         markup = None 
+        log_event(user_id, username, f"11")
         bot.send_message(chat_id, success_message, reply_markup=markup)  # Добавляем кнопки к сообщению
         del user_sessions[chat_id]
 
