@@ -358,7 +358,7 @@ def check_answer(message):
         elif difficulty == 10:
             success_message = f"🔥 {username}, Умничка 💪\nСлово: {correct_answer}"
         elif difficulty == 15:
-            success_message = f"🎻 {username},  Можешь , станешь музыкантом ? Великолепно ✨\nСлово: {correct_answer}"
+            success_message = f"🎻 {username},  Может , станешь музыкантом ? Великолепно ✨\nСлово: {correct_answer}"
         else:
             success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
         # Озвучка правильного ответа
