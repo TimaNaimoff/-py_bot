@@ -333,7 +333,7 @@ def check_answer(message):
             success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
             success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
-        elif difficulty == 5:
+        elif difficulty == 7:
             success_message = f"🎧 {username}, Умеешь слушать 👂\nСлово: {correct_answer}"
         elif difficulty == 10:
             success_message = f"🔥 {username}, Умничка 💪\nСлово: {correct_answer}"
@@ -359,12 +359,12 @@ def check_answer(message):
             feedback = f"😕 {username}, балони йепсан! Подумай ещё раз."
         elif difficulty == 3:
             feedback = f"🤨 {username}, это что за ответ ?!?!?!?. Марш учить !"
-        elif difficulty == 5:
-            success_message = f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека ! \nСлово: {correct_answer}"
+        elif difficulty == 7:
+            feedback = f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека ! \nСлово: {correct_answer}"
         elif difficulty == 10:
             feedback = f"🧠💨 {username}, мозг вышел из чата"
         elif difficulty == 15:
-            success_message = f"🤯👂 {username}, уши , вы существуете ?!?!?!? \nСлово: {correct_answer}"
+            feedback = f"🤯👂 {username}, уши , вы существуете ?!?!?!? \nСлово: {correct_answer}"
         else:
             feedback = f"❌ {username}, неверно. Попробуй снова."
 
