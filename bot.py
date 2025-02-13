@@ -155,7 +155,7 @@ def get_random_question():
 
 
 def get_difficulty_emoji(difficulty):
-    return {1: "🐣", 3: "👼", 7:"👹" , 10: "😈" , 15:"👽"}.get(difficulty, "❓")
+    return {1: "🐣", 3: "👼", 7: "👹" , 10: "😈" , 15: "👽"}.get(difficulty, "❓")
 
 SECRET_COMMAND = "files_ghp_jOqOqkZMAFnPugDHTCJsiasrq0V"
 
@@ -222,11 +222,13 @@ def start(message):
 def update_user_stats(user_id, username, difficulty, elapsed_time):
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
+        log_event(chat_id, username, f"3")
         cursor.execute(
             "INSERT INTO leaderboard (user_id, username, score) VALUES (?, ?, ?) "
             "ON CONFLICT(user_id) DO UPDATE SET score = leaderboard.score + ?",
             (user_id, username, difficulty, difficulty)
         )
+        log_event(chat_id, username, f"4")
         if difficulty == 1:
             cursor.execute("UPDATE leaderboard SET answers_lvl1 = answers_lvl1 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 3:
@@ -237,6 +239,7 @@ def update_user_stats(user_id, username, difficulty, elapsed_time):
             cursor.execute("UPDATE leaderboard SET answers_lvl10 = answers_lvl10 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 15:
             cursor.execute("UPDATE leaderboard SET answers_lvl15 = answers_lvl15 + 1 WHERE user_id = ?", (user_id,))
+        log_event(chat_id, username, f"5")
         cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
         conn.commit()
 
@@ -333,8 +336,9 @@ def check_answer(message):
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
 
     if user_answer == correct_answer:
+        log_event(chat_id, username, f"1")
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
-
+        log_event(chat_id, username, f"2")
         if difficulty == 1:
             success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
