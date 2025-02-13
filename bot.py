@@ -368,7 +368,7 @@ def check_answer(message):
         #markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
         #markup = None 
         log_event(user_id, username, f"11")
-        #bot.send_message(chat_id, success_message, reply_markup=markup)  # Добавляем кнопки к сообщению
+        bot.send_message(chat_id, success_message)  # Добавляем кнопки к сообщению
         del user_sessions[chat_id]
 
 
