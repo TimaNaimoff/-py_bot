@@ -220,8 +220,13 @@ def start(message):
     logging.info(f"Пользователь {message.chat.id} начал работу с ботом.")
     logger.handlers[0].flush()  # Принудительная запись в ло
 def update_user_stats(user_id, username, difficulty, elapsed_time):
+    log_event(chat_id, username, f"992")
     with sqlite3.connect("quiz.db") as conn:
-        cursor = conn.cursor()
+        log_event(chat_id, username, f"999")
+        try:
+            cursor = conn.cursor()
+        except sqlite3.Error as e:
+            print(f"❌ Ошибка подключения: {e}")    
         log_event(chat_id, username, f"3")
         cursor.execute(
             "INSERT INTO leaderboard (user_id, username, score) VALUES (?, ?, ?) "
@@ -336,9 +341,9 @@ def check_answer(message):
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
 
     if user_answer == correct_answer:
-        log_event(chat_id, username, f"1")
+
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
-        log_event(chat_id, username, f"2")
+
         if difficulty == 1:
             success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
