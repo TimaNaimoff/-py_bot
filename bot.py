@@ -330,7 +330,7 @@ def check_answer(message):
     chat_id = message.chat.id
     username = message.from_user.username or message.from_user.first_name
     session = user_sessions.get(chat_id)
-
+    user_id = message.from_user.id
     if not session:
         return
 
