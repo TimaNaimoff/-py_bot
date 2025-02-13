@@ -59,7 +59,7 @@ def contains_cyrillic(text):
     """ Проверяет, содержит ли строка кириллические символы. """
     return bool(re.search("[а-яА-Я]", text))
 
-def speak_text(text, filename="tts.mp3"):
+def speak_text(text, filename="Озвучка.mp3"):
     """ Озвучивает текст, если он не содержит кириллицы, и сохраняет в файл. """
     if not contains_cyrillic(text):
         tts = gTTS(text=text, lang="en")
@@ -153,7 +153,7 @@ def get_random_question():
 
 
 def get_difficulty_emoji(difficulty):
-    return {1: "🐣", 3: "👼", 10: "😈"}.get(difficulty, "❓")
+    return {1: "🐣", 3: "👼", 7:"👹" , 10: "😈" , 15:"👽"}.get(difficulty, "❓")
 
 SECRET_COMMAND = "files_ghp_jOqOqkZMAFnPugDHTCJsiasrq0V"
 
@@ -258,6 +258,13 @@ def send_question(message):
     
     if question_data:
         word, description, difficulty = question_data
+        is_audio_only = False
+        
+        # 1 и 10 уровень могут стать 7 и 15 с вероятностью 1 к 3
+        if difficulty in [1, 10] and random.randint(1, 3) == 1:
+            difficulty = 7 if difficulty == 1 else 15
+            is_audio_only = True
+        
         emoji = get_difficulty_emoji(difficulty)
         start_time = time.time()
         
@@ -267,21 +274,22 @@ def send_question(message):
             "start_time": start_time,
             "question_text": description
         }
-
-        # Генерируем озвучку
+        
         tts_file = speak_text(description)
         
-        markup = InlineKeyboardMarkup()
-        if tts_file and os.path.exists(tts_file):  # Проверяем, создан ли файл
+        if tts_file and os.path.exists(tts_file):
             with open(tts_file, "rb") as audio:
                 bot.send_audio(chat_id, audio)
-            markup.add(InlineKeyboardButton("🔊 Повторить", callback_data=f"play_audio_{chat_id}"))
-
-        bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown", reply_markup=markup)
+        
+        if not is_audio_only:
+            bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
+        else:
+            bot.send_message(chat_id, f"🎙️ *Голосовое задание* **{difficulty} - lvl** {emoji}", parse_mode="Markdown")
         
         log_event(chat_id, username, f"получил вопрос: {description} (Ответ: {word})")
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
+
 
 
 
@@ -291,6 +299,7 @@ def get_hint(word):
     middle_index = len(word) // 2
     hint = word[0] + "$" * (middle_index - 1) + word[middle_index] + "$" * (len(word) - middle_index - 1)
     return hint
+    
 @bot.message_handler(commands=['stats', 'global_rating', 'clean'])
 def handle_commands(message):
     if message.text == '/stats':
@@ -324,8 +333,12 @@ def check_answer(message):
             success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
             success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
+        elif difficulty == 5:
+            success_message = f"🎧 {username}, Умеешь слушать 👂\nСлово: {correct_answer}"
         elif difficulty == 10:
-            success_message = f"🔥 {username}, Умничка! 💪\nСлово: {correct_answer}"
+            success_message = f"🔥 {username}, Умничка 💪\nСлово: {correct_answer}"
+        elif difficulty == 15:
+            success_message = f"🎻 {username},  Можешь , станешь музыкантом ? Великолепно ✨\nСлово: {correct_answer}"
         else:
             success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
 
@@ -334,8 +347,8 @@ def check_answer(message):
         audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
 
         # Создаем кнопку с озвучкой
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
+        #markup = InlineKeyboardMarkup()
+        #markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
 
         bot.send_message(chat_id, success_message, reply_markup=markup)  # Добавляем кнопки к сообщению
         del user_sessions[chat_id]
@@ -346,8 +359,12 @@ def check_answer(message):
             feedback = f"😕 {username}, балони йепсан! Подумай ещё раз."
         elif difficulty == 3:
             feedback = f"🤨 {username}, это что за ответ ?!?!?!?. Марш учить !"
+        elif difficulty == 5:
+            success_message = f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека ! \nСлово: {correct_answer}"
         elif difficulty == 10:
-            feedback = f"🔥 {username}, мозг вышел из чата"
+            feedback = f"🧠💨 {username}, мозг вышел из чата"
+        elif difficulty == 15:
+            success_message = f"🤯👂 {username}, уши , вы существуете ?!?!?!? \nСлово: {correct_answer}"
         else:
             feedback = f"❌ {username}, неверно. Попробуй снова."
 
