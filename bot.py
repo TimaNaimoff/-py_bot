@@ -328,8 +328,8 @@ def check_answer(message):
 
     
     # Озвучка правильного ответа
-   	tts_file = speak_text(correct_answer)
-	audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
+        tts_file = speak_text(correct_answer)
+        audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
 
         # Создаем кнопку с озвучкой
         markup = InlineKeyboardMarkup()
