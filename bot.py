@@ -360,15 +360,15 @@ def check_answer(message):
             success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
         log_event(user_id, username, f"10")
         # Озвучка правильного ответа
-        tts_file = speak_text(correct_answer)
-        audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
+        #tts_file = speak_text(correct_answer)
+        #audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
         
         # Создаем кнопку с озвучкой
         #markup = InlineKeyboardMarkup()
         #markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
-        markup = None 
+        #markup = None 
         log_event(user_id, username, f"11")
-        bot.send_message(chat_id, success_message, reply_markup=markup)  # Добавляем кнопки к сообщению
+        #bot.send_message(chat_id, success_message, reply_markup=markup)  # Добавляем кнопки к сообщению
         del user_sessions[chat_id]
 
 
