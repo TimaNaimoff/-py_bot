@@ -220,33 +220,32 @@ def start(message):
     logging.info(f"Пользователь {message.chat.id} начал работу с ботом.")
     logger.handlers[0].flush()  # Принудительная запись в ло
 def update_user_stats(user_id, username, difficulty, elapsed_time):
-    log_event(user_id, username, f"992")
-    with sqlite3.connect("quiz.db") as conn:
-
-        try:
+    try:
+        with sqlite3.connect("quiz.db") as conn:
             cursor = conn.cursor()
-        except sqlite3.Error as e:
-            print(f"❌ Ошибка подключения: {e}")    
-        log_event(chat_id, username, f"3")
-        cursor.execute(
-            "INSERT INTO leaderboard (user_id, username, score) VALUES (?, ?, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET score = leaderboard.score + ?",
-            (user_id, username, difficulty, difficulty)
-        )
-        log_event(chat_id, username, f"4")
-        if difficulty == 1:
-            cursor.execute("UPDATE leaderboard SET answers_lvl1 = answers_lvl1 + 1 WHERE user_id = ?", (user_id,))
-        elif difficulty == 3:
-            cursor.execute("UPDATE leaderboard SET answers_lvl3 = answers_lvl3 + 1 WHERE user_id = ?", (user_id,))
-        elif difficulty == 7:
-            cursor.execute("UPDATE leaderboard SET answers_lvl7 = answers_lvl7 + 1 WHERE user_id = ?", (user_id,))    
-        elif difficulty == 10:
-            cursor.execute("UPDATE leaderboard SET answers_lvl10 = answers_lvl10 + 1 WHERE user_id = ?", (user_id,))
-        elif difficulty == 15:
-            cursor.execute("UPDATE leaderboard SET answers_lvl15 = answers_lvl15 + 1 WHERE user_id = ?", (user_id,))
-        log_event(chat_id, username, f"5")
-        cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
-        conn.commit()
+
+            cursor.execute(
+                "INSERT INTO leaderboard (user_id, username, score) VALUES (?, ?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET score = leaderboard.score + ?",
+                (user_id, username, difficulty, difficulty)
+            )
+
+            if difficulty == 1:
+                cursor.execute("UPDATE leaderboard SET answers_lvl1 = answers_lvl1 + 1 WHERE user_id = ?", (user_id,))
+            elif difficulty == 3:
+                cursor.execute("UPDATE leaderboard SET answers_lvl3 = answers_lvl3 + 1 WHERE user_id = ?", (user_id,))
+            elif difficulty == 7:
+                cursor.execute("UPDATE leaderboard SET answers_lvl7 = answers_lvl7 + 1 WHERE user_id = ?", (user_id,))    
+            elif difficulty == 10:
+                cursor.execute("UPDATE leaderboard SET answers_lvl10 = answers_lvl10 + 1 WHERE user_id = ?", (user_id,))
+            elif difficulty == 15:
+                cursor.execute("UPDATE leaderboard SET answers_lvl15 = answers_lvl15 + 1 WHERE user_id = ?", (user_id,))
+            log_event(user_id, username, f"5")
+            cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
+            conn.commit()
+    except sqlite3.Error as e:
+        log_event(user_id, username, f"❌ Ошибка работы с БД: {e}")
+
 
 
 user_sessions = {}  # Храним текущие вопросы для каждого чата
