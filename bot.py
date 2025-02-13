@@ -232,7 +232,7 @@ def update_user_stats(user_id, username, difficulty, elapsed_time):
         elif difficulty == 3:
             cursor.execute("UPDATE leaderboard SET answers_lvl3 = answers_lvl3 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 7:
-            cursor.execute("UPDATE leaderboard SET answers_lvl3 = answers_lvl7 + 1 WHERE user_id = ?", (user_id,))    
+            cursor.execute("UPDATE leaderboard SET answers_lvl7 = answers_lvl7 + 1 WHERE user_id = ?", (user_id,))    
         elif difficulty == 10:
             cursor.execute("UPDATE leaderboard SET answers_lvl10 = answers_lvl10 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 15:
