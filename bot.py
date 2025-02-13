@@ -264,22 +264,25 @@ def send_question(message):
         user_sessions[chat_id] = {
             "correct_answer": word.lower(),
             "difficulty": difficulty,
-            "start_time": start_time
+            "start_time": start_time,
+            "question_text": description
         }
 
-        # Генерируем озвучку и получаем путь к файлу
+        # Генерируем озвучку
         tts_file = speak_text(description)
-        audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
-
-        # Создаем кнопку с озвучкой
+        
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
+        if tts_file and os.path.exists(tts_file):  # Проверяем, создан ли файл
+            with open(tts_file, "rb") as audio:
+                bot.send_audio(chat_id, audio)
+            markup.add(InlineKeyboardButton("🔊 Повторить", callback_data=f"play_audio_{chat_id}"))
 
         bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown", reply_markup=markup)
         
         log_event(chat_id, username, f"получил вопрос: {description} (Ответ: {word})")
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
+
 
 
 def get_hint(word):
@@ -318,25 +321,25 @@ def check_answer(message):
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
 
         if difficulty == 1:
-            success_message = f"✅ {username}, Ну , неплохо ! 🎉\nСлово: {correct_answer}"
+            success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
         elif difficulty == 3:
-            success_message = f"🎯 {username}, А ты не промах  🚀\nСлово: {correct_answer}"
+            success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
         elif difficulty == 10:
-            success_message = f"🔥 {username}, Умничка ! 💪\nСлово: {correct_answer}"
+            success_message = f"🔥 {username}, Умничка! 💪\nСлово: {correct_answer}"
         else:
             success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
 
-    
-    # Озвучка правильного ответа
+        # Озвучка правильного ответа
         tts_file = speak_text(correct_answer)
         audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
 
         # Создаем кнопку с озвучкой
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
-        
-        bot.send_message(chat_id, success_message)
-        del user_sessions[chat_id]  
+
+        bot.send_message(chat_id, success_message, reply_markup=markup)  # Добавляем кнопки к сообщению
+        del user_sessions[chat_id]
+
 
     else:
         if difficulty == 1:
