@@ -222,7 +222,7 @@ def start(message):
 def update_user_stats(user_id, username, difficulty, elapsed_time):
     log_event(user_id, username, f"992")
     with sqlite3.connect("quiz.db") as conn:
-        log_event(chat_id, username, f"999")
+
         try:
             cursor = conn.cursor()
         except sqlite3.Error as e:
