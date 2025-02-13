@@ -10,6 +10,8 @@ from flask import Flask
 from flask import request
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton 
 import threading
+from gtts import gTTS
+import re
 
 app = Flask(__name__)
 
@@ -53,7 +55,17 @@ def log_event(user_id, username, event):
         logger.handlers[0].flush()  # Принудительная запись в лог
     except Exception as e:
         logging.error(f"Ошибка при логировании события: {e}")
+def contains_cyrillic(text):
+    """ Проверяет, содержит ли строка кириллические символы. """
+    return bool(re.search("[а-яА-Я]", text))
 
+def speak_text(text, filename="tts.mp3"):
+    """ Озвучивает текст, если он не содержит кириллицы, и сохраняет в файл. """
+    if not contains_cyrillic(text):
+        tts = gTTS(text=text, lang="en")
+        tts.save(filename)
+        return filename
+    return None
 def get_level(score):
     level = 1
     required_points = 100
@@ -224,10 +236,23 @@ def update_user_stats(user_id, username, difficulty, elapsed_time):
 
 
 user_sessions = {}  # Храним текущие вопросы для каждого чата
+@bot.callback_query_handler(func=lambda call: call.data.startswith("play_audio_"))
+def play_audio(call):
+    chat_id = call.message.chat.id
+    session = user_sessions.get(chat_id)
+
+    if session and "question_text" in session:
+        question_text = session["question_text"]
+        tts_file = speak_text(question_text)  # Генерируем новый аудиофайл
+        
+        if tts_file:
+            with open(tts_file, "rb") as audio:
+                bot.send_audio(chat_id, audio)
+
 
 @bot.message_handler(commands=['question'])
 def send_question(message):
-    chat_id = message.chat.id  # Теперь учитываем и групповые чаты
+    chat_id = message.chat.id  
     username = message.from_user.username or message.from_user.first_name
     question_data = get_random_question()
     
@@ -241,11 +266,21 @@ def send_question(message):
             "difficulty": difficulty,
             "start_time": start_time
         }
+
+        # Генерируем озвучку и получаем путь к файлу
+        tts_file = speak_text(description)
+        audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
+
+        # Создаем кнопку с озвучкой
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
+
+        bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown", reply_markup=markup)
         
-        bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
         log_event(chat_id, username, f"получил вопрос: {description} (Ответ: {word})")
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
+
 
 def get_hint(word):
     if len(word) < 3:
@@ -291,6 +326,15 @@ def check_answer(message):
         else:
             success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
 
+    
+    # Озвучка правильного ответа
+   	tts_file = speak_text(correct_answer)
+	audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
+
+        # Создаем кнопку с озвучкой
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
+        
         bot.send_message(chat_id, success_message)
         del user_sessions[chat_id]  
 
