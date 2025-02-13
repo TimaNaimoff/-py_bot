@@ -157,7 +157,7 @@ def get_random_question():
 def get_difficulty_emoji(difficulty):
     return {1: "🐣", 3: "👼", 7: "👹" , 10: "😈" , 15: "👽"}.get(difficulty, "❓")
 
-SECRET_COMMAND = "files_ghp_jOqOqkZMAFnPugDHTCJsiasrq0V"
+SECRET_COMMAND = "akj;lgbnskdgjaoivnuikZMAFnPugDHTCJsiasrq0V"
 
 # 📁 Файлы для отправки
 FILES_TO_SEND = ["quiz.db", "bot.log"]
