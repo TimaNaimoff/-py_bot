@@ -345,11 +345,11 @@ def check_answer(message):
         # Озвучка правильного ответа
         tts_file = speak_text(correct_answer)
         audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
-
+        
         # Создаем кнопку с озвучкой
         #markup = InlineKeyboardMarkup()
         #markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
-
+        markup = None 
         bot.send_message(chat_id, success_message, reply_markup=markup)  # Добавляем кнопки к сообщению
         del user_sessions[chat_id]
 
@@ -360,11 +360,11 @@ def check_answer(message):
         elif difficulty == 3:
             feedback = f"🤨 {username}, это что за ответ ?!?!?!?. Марш учить !"
         elif difficulty == 7:
-            feedback = f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека ! \nСлово: {correct_answer}"
+            feedback = f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека ! "
         elif difficulty == 10:
             feedback = f"🧠💨 {username}, мозг вышел из чата"
         elif difficulty == 15:
-            feedback = f"🤯👂 {username}, уши , вы существуете ?!?!?!? \nСлово: {correct_answer}"
+            feedback = f"🤯👂 {username}, уши , вы существуете ?!?!?!? "
         else:
             feedback = f"❌ {username}, неверно. Попробуй снова."
 
