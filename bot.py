@@ -89,7 +89,9 @@ def init_db():
                 score INTEGER DEFAULT 0,
                 answers_lvl1 INTEGER DEFAULT 0,
                 answers_lvl3 INTEGER DEFAULT 0,
+                answers_lvl7 INTEGER DEFAULT 0,
                 answers_lvl10 INTEGER DEFAULT 0,
+                answers_lvl15 INTEGER DEFAULT 0,
                 total_time INTEGER DEFAULT 0
             );
         ''')
@@ -182,17 +184,17 @@ def send_stats(data):
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         stats = cursor.execute(
-            "SELECT score, answers_lvl1, answers_lvl3, answers_lvl10, total_time FROM leaderboard WHERE user_id = ?",
+            "SELECT score, answers_lvl1, answers_lvl3, answers_lvl7, answers_lvl10, answers_lvl15 , total_time FROM leaderboard WHERE user_id = ?",
             (user_id,)
         ).fetchone()
     
     if stats:
-        score, lvl1, lvl3, lvl10, total_time = stats
+        score, lvl1, lvl3, lvl7 , lvl10, lvl15, total_time = stats
         level = get_level(score)
         emoji = LEVEL_EMOJIS.get(level, "❓")
         bot.send_message(
             chat_id,
-            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n😈 Сложные: {lvl10}\n⏳ Общее время: {total_time} сек"
+            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n 🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time} сек"
         )
     else:
         bot.send_message(chat_id, "❌ У вас пока нет статистики.")
@@ -229,8 +231,12 @@ def update_user_stats(user_id, username, difficulty, elapsed_time):
             cursor.execute("UPDATE leaderboard SET answers_lvl1 = answers_lvl1 + 1 WHERE user_id = ?", (user_id,))
         elif difficulty == 3:
             cursor.execute("UPDATE leaderboard SET answers_lvl3 = answers_lvl3 + 1 WHERE user_id = ?", (user_id,))
+        elif difficulty == 7:
+            cursor.execute("UPDATE leaderboard SET answers_lvl3 = answers_lvl7 + 1 WHERE user_id = ?", (user_id,))    
         elif difficulty == 10:
             cursor.execute("UPDATE leaderboard SET answers_lvl10 = answers_lvl10 + 1 WHERE user_id = ?", (user_id,))
+        elif difficulty == 15:
+            cursor.execute("UPDATE leaderboard SET answers_lvl15 = answers_lvl15 + 1 WHERE user_id = ?", (user_id,))
         cursor.execute("UPDATE leaderboard SET total_time = total_time + ? WHERE user_id = ?", (elapsed_time, user_id))
         conn.commit()
 
