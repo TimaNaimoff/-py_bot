@@ -300,8 +300,10 @@ def send_question(message):
             with open(tts_file, "rb") as audio:
                 bot.send_audio(chat_id, audio)
         
+        transcription = fetch_transcription(word) if difficulty == 1 else ""
+        
         if not is_audio_only:
-            bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
+            bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}\nСлово: {word} {transcription}", parse_mode="Markdown")
         else:
             bot.send_message(chat_id, f"🎙️ *Голосовое задание* **{difficulty} - lvl** {emoji}", parse_mode="Markdown")
         
@@ -329,6 +331,8 @@ def handle_commands(message):
         clean(message)
 
 
+import requests
+
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text) and not message.text.startswith("#"))
 def check_answer(message):
     chat_id = message.chat.id
@@ -348,30 +352,24 @@ def check_answer(message):
     if user_answer == correct_answer:
         log_event(user_id, username, f"8") 
         update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
-       
-        if difficulty == 1:
-            success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
-        elif difficulty == 3:
-            success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
-        elif difficulty == 7:
-            success_message = f"🎧 {username}, Умеешь слушать 👂\nСлово: {correct_answer}"
-        elif difficulty == 10:
-            success_message = f"🔥 {username}, Умничка 💪\nСлово: {correct_answer}"
-        elif difficulty == 15:
-            success_message = f"🎻 {username},  Может , станешь музыкантом ? Великолепно ✨\nСлово: {correct_answer}"
-        else:
-            success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
-        # Озвучка правильного ответа
-        #tts_file = speak_text(correct_answer)
-        #audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
         
-        # Создаем кнопку с озвучкой
-        #markup = InlineKeyboardMarkup()
-        #markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
-        #markup = None 
-        bot.send_message(chat_id, success_message)  # Добавляем кнопки к сообщению
-        del user_sessions[chat_id]
+        transcription = fetch_transcription(correct_answer)  # Получаем транскрипцию извне
+        
+        if difficulty == 1:
+            success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer} [{transcription}]"
+        elif difficulty == 3:
+            success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer} [{transcription}]"
+        elif difficulty == 7:
+            success_message = f"🎧 {username}, Умеешь слушать 👂\nСлово: {correct_answer} [{transcription}]"
+        elif difficulty == 10:
+            success_message = f"🔥 {username}, Умничка 💪\nСлово: {correct_answer} [{transcription}]"
+        elif difficulty == 15:
+            success_message = f"🎻 {username}, Может, станешь музыкантом? Великолепно ✨\nСлово: {correct_answer} [{transcription}]"
+        else:
+            success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer} [{transcription}]"
 
+        bot.send_message(chat_id, success_message)  
+        del user_sessions[chat_id]
 
     else:
         if difficulty == 1:
@@ -397,6 +395,19 @@ def check_answer(message):
     send_main_menu(chat_id)
     session["new_question_sent"] = True
     send_question(message)
+
+def fetch_transcription(word):
+    # Используем бесплатное API для получения транскрипции
+    url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        try:
+            return data[0]['phonetics'][0]['text']
+        except (IndexError, KeyError):
+            return "(нет данных)"
+    return "(нет данных)"
+
 
 
 
