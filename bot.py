@@ -329,6 +329,19 @@ def handle_commands(message):
         clean(message)
 
 
+
+
+API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/"
+
+def get_transcription(word):
+    try:
+        response = requests.get(f"{API_URL}{word}")
+        data = response.json()
+        return data[0]["phonetics"][0]["text"] if "phonetics" in data[0] else ""
+    except Exception as e:
+        print(f"Ошибка получения транскрипции: {e}")
+        return ""
+
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text) and not message.text.startswith("#"))
 def check_answer(message):
     chat_id = message.chat.id
@@ -338,67 +351,50 @@ def check_answer(message):
     if not session:
         return
 
-    correct_answer = session["correct_answer"]
+    correct_answer = session["correct_answer"].lower()
     difficulty = session["difficulty"]
     elapsed_time = int(time.time() - session["start_time"])
     user_answer = message.text.strip().lower()
-
+    
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
-
+    
     if user_answer == correct_answer:
         log_event(user_id, username, f"8") 
-        update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
-       
-        if difficulty == 1:
-            success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
-        elif difficulty == 3:
-            success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
-        elif difficulty == 7:
-            success_message = f"🎧 {username}, Умеешь слушать 👂\nСлово: {correct_answer}"
-        elif difficulty == 10:
-            success_message = f"🔥 {username}, Умничка 💪\nСлово: {correct_answer}"
-        elif difficulty == 15:
-            success_message = f"🎻 {username},  Может , станешь музыкантом ? Великолепно ✨\nСлово: {correct_answer}"
-        else:
-            success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
-        # Озвучка правильного ответа
-        #tts_file = speak_text(correct_answer)
-        #audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
+        update_user_stats(user_id, username, difficulty, elapsed_time)
+        transcription = get_transcription(correct_answer)
         
-        # Создаем кнопку с озвучкой
-        #markup = InlineKeyboardMarkup()
-        #markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
-        #markup = None 
-        bot.send_message(chat_id, success_message)  # Добавляем кнопки к сообщению
+        success_messages = {
+            1: f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer} {transcription}",
+            3: f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer} {transcription}",
+            7: f"🎧 {username}, Умеешь слушать 👂\nСлово: {correct_answer} {transcription}",
+            10: f"🔥 {username}, Умничка 💪\nСлово: {correct_answer} {transcription}",
+            15: f"🎻 {username}, Может, станешь музыкантом? Великолепно ✨\nСлово: {correct_answer} {transcription}",
+        }
+        
+        success_message = success_messages.get(difficulty, f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer} {transcription}")
+        
+        bot.send_message(chat_id, success_message)
         del user_sessions[chat_id]
-
-
     else:
-        if difficulty == 1:
-            feedback = f"😕 {username}, балони йепсан! Подумай ещё раз."
-        elif difficulty == 3:
-            feedback = f"🤨 {username}, это что за ответ ?!?!?!?. Марш учить !"
-        elif difficulty == 7:
-            feedback = f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека ! "
-        elif difficulty == 10:
-            feedback = f"🧠💨 {username}, мозг вышел из чата"
-        elif difficulty == 15:
-            feedback = f"🤯👂 {username}, уши , вы существуете ?!?!?!? "
-        else:
-            feedback = f"❌ {username}, неверно. Попробуй снова."
-
+        feedback_messages = {
+            1: f"😕 {username}, балони йепсан! Подумай ещё раз.",
+            3: f"🤨 {username}, это что за ответ ?!?!?!?. Марш учить!",
+            7: f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека!",
+            10: f"🧠💨 {username}, мозг вышел из чата",
+            15: f"🤯👂 {username}, уши, вы существуете ?!?!?!?",
+        }
+        
+        feedback = feedback_messages.get(difficulty, f"❌ {username}, неверно. Попробуй снова.")
         hint = get_hint(correct_answer)
         bot.send_message(chat_id, f"{feedback}\nПодсказка: {hint}")
         time.sleep(4)
-
+    
     if session.get("new_question_sent"):
         return
-
+    
     send_main_menu(chat_id)
     session["new_question_sent"] = True
     send_question(message)
-
-
 
 
 
