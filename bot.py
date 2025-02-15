@@ -397,7 +397,7 @@ def analyze_speech(user_audio, reference_audio):
         
         return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
     except Exception as e:
-        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
+        logging.info(f"[analyze_speech] Error analyzing speech: {e}")
         return 0, 0, 0
 
 
