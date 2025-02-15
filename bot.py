@@ -14,6 +14,8 @@ from gtts import gTTS
 import re
 import parselmouth
 import speech_recognition as sr
+from pydub import AudioSegment
+
 
 app = Flask(__name__)
 
@@ -281,7 +283,7 @@ def send_question(message):
         is_audio_only = False
         is_speaking_task = False
         
-        if difficulty in [3, 10]:
+        if difficulty in [1, 10]:
             rand_choice = random.randint(1, 4)
             if rand_choice == 1:
                 is_speaking_task = True
@@ -308,7 +310,7 @@ def send_question(message):
                 bot.send_audio(chat_id, audio)
         
         if is_speaking_task:
-            bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji}\n{description}", parse_mode="Markdown")
+            bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji}", parse_mode="Markdown")
         elif not is_audio_only:
             bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
         else:
@@ -333,12 +335,16 @@ def check_voice_answer(message):
     with open(audio_path, "wb") as f:
         f.write(downloaded_file)
     
-    tts_file = speak_text(session["correct_answer"])  # Получаем эталонное аудио
+    wav_path = f"voice_{chat_id}.wav"
+    AudioSegment.from_file(audio_path).export(wav_path, format="wav")
+    os.remove(audio_path)
     
-    pitch_score, jitter_score, shimmer_score = analyze_speech(audio_path, tts_file)
+    tts_file = speak_text(session["correct_answer"])
+    
+    pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
     
     recognizer = sr.Recognizer()
-    with sr.AudioFile(audio_path) as source:
+    with sr.AudioFile(wav_path) as source:
         audio_data = recognizer.record(source)
     
     try:
@@ -354,7 +360,9 @@ def check_voice_answer(message):
     except sr.UnknownValueError:
         bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
-    os.remove(audio_path)
+    os.remove(wav_path)
+
+
 
 def analyze_speech(user_audio, reference_audio):
     user_sound = parselmouth.Sound(user_audio)
@@ -362,15 +370,15 @@ def analyze_speech(user_audio, reference_audio):
     
     pitch_user = user_sound.to_pitch()
     pitch_ref = reference_sound.to_pitch()
-    pitch_score = 100 - abs(pitch_user.mean() - pitch_ref.mean())
+    pitch_score = 100 - abs(pitch_user.get_mean() - pitch_ref.get_mean()) if pitch_user.get_mean() and pitch_ref.get_mean() else 0
     
-    jitter_user = user_sound.get_jitter()
-    jitter_ref = reference_sound.get_jitter()
-    jitter_score = 100 - abs(jitter_user - jitter_ref) * 1000
+    jitter_user = user_sound.to_jitter()
+    jitter_ref = reference_sound.to_jitter()
+    jitter_score = 100 - abs(jitter_user - jitter_ref) * 1000 if jitter_user and jitter_ref else 0
     
-    shimmer_user = user_sound.get_shimmer()
-    shimmer_ref = reference_sound.get_shimmer()
-    shimmer_score = 100 - abs(shimmer_user - shimmer_ref) * 1000
+    shimmer_user = user_sound.to_shimmer()
+    shimmer_ref = reference_sound.to_shimmer()
+    shimmer_score = 100 - abs(shimmer_user - shimmer_ref) * 1000 if shimmer_user and shimmer_ref else 0
     
     return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
 
@@ -379,7 +387,7 @@ def compare_texts(user_text, correct_text):
     correct_words = set(re.findall(r'\w+', correct_text))
     
     common_words = user_words & correct_words
-    return int((len(common_words) / len(correct_words)) * 100)
+    return int((len(common_words) / len(correct_words)) * 100) if correct_words else 0
 
 
 
