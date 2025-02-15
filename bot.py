@@ -408,7 +408,7 @@ def transcribe_audio(wav_path):
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
-    logging.debug(f"[check_voice_answer] Chat {chat_id}: session found = {session is not None}")
+    logging.info(f"[check_voice_answer] Chat {chat_id}: session found = {session is not None}")
     
     if not session:
         logging.warning(f"[check_voice_answer] Chat {chat_id}: No active session.")
@@ -432,7 +432,7 @@ def check_voice_answer(message):
     
     tts_file = speak_text(session["correct_answer"])
     
-    logging.debug(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
+    logging.info(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
     pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
     
     try:
@@ -447,7 +447,7 @@ def check_voice_answer(message):
         base_points = session["difficulty"]
         task_points = base_points + int(final_score // 10)
         
-        logging.debug(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
+        logging.info(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
         
         bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
     except sr.UnknownValueError:
