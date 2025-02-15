@@ -318,22 +318,7 @@ def send_question(message):
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
-def remove_silence(audio_path):
-    try:
-        logging.debug(f"[remove_silence] Processing {audio_path}")
-        sound = AudioSegment.from_file(audio_path)
-        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40)
-        if not non_silent_chunks:
-            return audio_path
-        start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
-        trimmed_sound = sound[start_trim:end_trim]
-        trimmed_path = "trimmed_" + audio_path
-        trimmed_sound.export(trimmed_path, format="wav")
-        logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
-        return trimmed_path
-    except Exception as e:
-        logging.error(f"[remove_silence] Error processing {audio_path}: {e}")
-        return audio_path
+
 
 def normalize_audio(audio_path):
     try:
@@ -359,8 +344,8 @@ def match_audio_length(user_audio, reference_audio):
     return user_sound, reference_sound
 
 def analyze_speech(user_audio, reference_audio):
-    user_audio = remove_silence(user_audio)
-    reference_audio = remove_silence(reference_audio)
+    user_audio = user_audio
+    reference_audio = reference_audio
     
     user_audio = normalize_audio(user_audio)
     reference_audio = normalize_audio(reference_audio)
