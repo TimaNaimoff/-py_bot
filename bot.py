@@ -398,12 +398,16 @@ def analyze_speech(user_audio, reference_audio):
 
         pitch_score = max(0, 100 - abs(user_pitch_mean - reference_pitch_mean))
 
-        user_jitter = user_sound.to_jitter(local=True)
-        reference_jitter = reference_sound.to_jitter(local=True)
+        # Jitter (Среднее абсолютное отклонение частоты)
+        user_jitter = np.mean(np.abs(np.diff(user_pitch_values[user_pitch_values > 0]))) if len(user_pitch_values[user_pitch_values > 0]) > 1 else 0
+        reference_jitter = np.mean(np.abs(np.diff(reference_pitch_values[reference_pitch_values > 0]))) if len(reference_pitch_values[reference_pitch_values > 0]) > 1 else 0
         jitter_score = max(0, 100 - abs(user_jitter - reference_jitter) * 1000)
 
-        user_shimmer = user_sound.to_shimmer(local=True)
-        reference_shimmer = reference_sound.to_shimmer(local=True)
+        # Shimmer (Среднее абсолютное отклонение амплитуды)
+        user_intensity = user_sound.to_intensity().values
+        reference_intensity = reference_sound.to_intensity().values
+        user_shimmer = np.mean(np.abs(np.diff(user_intensity[user_intensity > 0]))) if len(user_intensity[user_intensity > 0]) > 1 else 0
+        reference_shimmer = np.mean(np.abs(np.diff(reference_intensity[reference_intensity > 0]))) if len(reference_intensity[reference_intensity > 0]) > 1 else 0
         shimmer_score = max(0, 100 - abs(user_shimmer - reference_shimmer) * 1000)
 
         logging.debug(f"[analyze_speech] Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
@@ -413,6 +417,7 @@ def analyze_speech(user_audio, reference_audio):
     except Exception as e:
         logging.error(f"[analyze_speech] Error processing audio: {e}")
         return 0, 0, 0
+
 
 
 def compare_texts(user_text, correct_text):
