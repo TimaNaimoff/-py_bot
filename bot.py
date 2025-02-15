@@ -281,14 +281,9 @@ def send_question(message):
     if question_data:
         word, description, difficulty = question_data
         is_audio_only = False
-        is_speaking_task = False
+        is_speaking_task = difficulty in [3, 10] and random.randint(1, 4) == 1
         
-        if difficulty in [3, 10]:
-            rand_choice = random.randint(1, 4)
-            if rand_choice == 1:
-                is_speaking_task = True
-        
-        if difficulty in [3, 10] and random.randint(1, 3) == 1:
+        if difficulty in [1, 10] and random.randint(1, 3) == 1:
             difficulty = 7 if difficulty == 1 else 15
             is_audio_only = True
         
@@ -302,6 +297,8 @@ def send_question(message):
             "question_text": description,
             "is_speaking_task": is_speaking_task
         }
+        
+        logging.info(f"[send_question] Chat {chat_id}: is_speaking_task={is_speaking_task}, is_audio_only={is_audio_only}")
         
         tts_file = speak_text(description)
         
@@ -319,6 +316,7 @@ def send_question(message):
         log_event(chat_id, username, f"получил вопрос: {description} (Ответ: {word})")
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
+
 
 @bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
