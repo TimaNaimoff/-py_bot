@@ -16,6 +16,7 @@ import parselmouth
 import speech_recognition as sr
 from pydub import AudioSegment
 import numpy as np
+from pydub.silence import detect_nonsilent
 
 
 app = Flask(__name__)
@@ -342,6 +343,7 @@ def check_voice_answer(message):
         f.write(downloaded_file)
     
     wav_path = f"voice_{chat_id}.wav"
+    remove_silence(wav_path)
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
     
@@ -418,7 +420,16 @@ def analyze_speech(user_audio, reference_audio):
     except Exception as e:
         logging.error(f"[analyze_speech] Error processing audio: {e}")
         return 0, 0, 0
-
+def remove_silence(audio_path):
+    sound = AudioSegment.from_wav(audio_path)
+    non_silent_ranges = detect_nonsilent(sound, min_silence_len=300, silence_thresh=sound.dBFS-16)
+    
+    if non_silent_ranges:
+        start_trim = non_silent_ranges[0][0]
+        end_trim = non_silent_ranges[-1][1]
+        trimmed_sound = sound[start_trim:end_trim]
+        trimmed_sound.export(audio_path, format="wav")
+        logging.debug(f"[remove_silence] Trimmed audio: {start_trim}-{end_trim} ms")
 
 
 def compare_texts(user_text, correct_text):
