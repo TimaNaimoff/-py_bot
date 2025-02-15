@@ -387,16 +387,33 @@ def analyze_speech(user_audio, reference_audio):
         user_sound = parselmouth.Sound(user_audio)
         reference_sound = parselmouth.Sound(reference_audio)
 
-        pitch_score = 100 - abs(user_sound.to_pitch().get_mean() - reference_sound.to_pitch().get_mean()) if user_sound.to_pitch().get_mean() and reference_sound.to_pitch().get_mean() else 0
-        jitter_score = 100 - abs(user_sound.to_jitter() - reference_sound.to_jitter()) * 1000 if user_sound.to_jitter() and reference_sound.to_jitter() else 0
-        shimmer_score = 100 - abs(user_sound.to_shimmer() - reference_sound.to_shimmer()) * 1000 if user_sound.to_shimmer() and reference_sound.to_shimmer() else 0
-        
+        user_pitch = user_sound.to_pitch()
+        reference_pitch = reference_sound.to_pitch()
+
+        user_pitch_values = user_pitch.selected_array['frequency']
+        reference_pitch_values = reference_pitch.selected_array['frequency']
+
+        user_pitch_mean = user_pitch_values[user_pitch_values > 0].mean() if len(user_pitch_values[user_pitch_values > 0]) > 0 else 0
+        reference_pitch_mean = reference_pitch_values[reference_pitch_values > 0].mean() if len(reference_pitch_values[reference_pitch_values > 0]) > 0 else 0
+
+        pitch_score = max(0, 100 - abs(user_pitch_mean - reference_pitch_mean))
+
+        user_jitter = user_sound.to_jitter(local=True)
+        reference_jitter = reference_sound.to_jitter(local=True)
+        jitter_score = max(0, 100 - abs(user_jitter - reference_jitter) * 1000)
+
+        user_shimmer = user_sound.to_shimmer(local=True)
+        reference_shimmer = reference_sound.to_shimmer(local=True)
+        shimmer_score = max(0, 100 - abs(user_shimmer - reference_shimmer) * 1000)
+
         logging.debug(f"[analyze_speech] Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
-        
-        return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
+
+        return pitch_score, jitter_score, shimmer_score
+
     except Exception as e:
         logging.error(f"[analyze_speech] Error processing audio: {e}")
         return 0, 0, 0
+
 
 def compare_texts(user_text, correct_text):
     user_words = set(re.findall(r'\w+', user_text))
