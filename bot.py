@@ -390,7 +390,7 @@ def analyze_speech(user_audio, reference_audio):
     
     return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
 
-ddef remove_silence(audio_path):
+def remove_silence(audio_path):
     try:
         logging.debug(f"[remove_silence] Начало обработки файла: {audio_path}")
         sound = AudioSegment.from_wav(audio_path)
