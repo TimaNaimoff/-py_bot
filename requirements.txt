@@ -44,7 +44,7 @@ gunicorn==21.2.0
 gTTS==2.5.4
 telebot==0.0.5
 SpeechRecognition==3.10.0
-praat-parselmouth==1.1.1
+praat-parselmouth==0.4.5
 numpy==1.24.2
 pydub==0.25.1
 
