@@ -16,7 +16,6 @@ import parselmouth
 import speech_recognition as sr
 from pydub import AudioSegment
 import numpy as np
-from pydub.silence import detect_nonsilent
 
 
 app = Flask(__name__)
@@ -320,6 +319,28 @@ def send_question(message):
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
 
+def match_audio_length(user_audio, reference_audio):
+    user_sound = parselmouth.Sound(user_audio)
+    reference_sound = parselmouth.Sound(reference_audio)
+    
+    min_duration = min(user_sound.get_total_duration(), reference_sound.get_total_duration())
+    user_sound = user_sound.extract_part(from_time=0, to_time=min_duration)
+    reference_sound = reference_sound.extract_part(from_time=0, to_time=min_duration)
+    
+    return user_sound, reference_sound
+
+def analyze_speech(user_audio, reference_audio):
+    user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
+    
+    user_pitch = user_sound.to_pitch().selected_array['frequency']
+    ref_pitch = reference_sound.to_pitch().selected_array['frequency']
+    pitch_score = 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch)) if user_pitch.size > 0 and ref_pitch.size > 0 else 0
+    
+    jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
+    shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
+    
+    return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
+
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
@@ -344,8 +365,6 @@ def check_voice_answer(message):
     wav_path = f"voice_{chat_id}.wav"
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
-    
-    remove_silence(wav_path)
     
     tts_file = speak_text(session["correct_answer"])
     
@@ -374,42 +393,6 @@ def check_voice_answer(message):
     
     os.remove(wav_path)
 
-
-
-
-def analyze_speech(user_audio, reference_audio):
-    user_sound = parselmouth.Sound(user_audio)
-    reference_sound = parselmouth.Sound(reference_audio)
-    
-    user_pitch = user_sound.to_pitch().selected_array['frequency']
-    ref_pitch = reference_sound.to_pitch().selected_array['frequency']
-    pitch_score = 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch)) if user_pitch.size > 0 and ref_pitch.size > 0 else 0
-    
-    jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
-    shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
-    
-    return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
-
-def remove_silence(audio_path):
-    try:
-        logging.debug(f"[remove_silence] Начало обработки файла: {audio_path}")
-        sound = AudioSegment.from_wav(audio_path)
-        logging.debug(f"[remove_silence] Длина аудио: {len(sound)} мс, уровень громкости: {sound.dBFS:.2f} дБ")
-
-        non_silent_ranges = detect_nonsilent(sound, min_silence_len=300, silence_thresh=sound.dBFS - 16)
-        logging.debug(f"[remove_silence] Найдено {len(non_silent_ranges)} несекретных участков")
-
-        if non_silent_ranges:
-            start_trim = non_silent_ranges[0][0]
-            end_trim = non_silent_ranges[-1][1]
-            trimmed_sound = sound[start_trim:end_trim]
-            trimmed_sound.export(audio_path, format="wav")
-            logging.debug(f"[remove_silence] Обрезано: {start_trim}-{end_trim} мс")
-        else:
-            logging.warning(f"[remove_silence] Нет несекретных участков. Аудио не изменено.")
-
-    except Exception as e:
-        logging.error(f"[remove_silence] Ошибка обработки аудио: {str(e)}")
 
 
 def compare_texts(user_text, correct_text):
