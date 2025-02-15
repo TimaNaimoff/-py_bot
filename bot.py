@@ -181,7 +181,7 @@ def send_files(message):
 
 def get_language_icon(percentage):
     if percentage < 20:
-        return "🇨🇳 Как товарищ Чэнь Ван из глубинки"
+        return "🇨🇳 Как товарищ Цзынь Ван из глубинки"
     elif percentage < 40:
         return "🇷🇺 Как помещик Борис Иванович после бани"
     elif percentage < 60:
@@ -189,7 +189,7 @@ def get_language_icon(percentage):
     elif percentage < 80:
         return "🇺🇸 Как старый плут Билли Джо из Техаса"
     else:
-        return "🇬🇧 Как многоуважаемый Лорд Альфред фон Виксенхэм"
+        return "🇬🇧 Как Его Благородство Лорд Альфред фон Виксенхэм"
 
 def send_stats(data):
     if isinstance(data, telebot.types.Message):
@@ -479,7 +479,7 @@ def check_voice_answer(message):
                 conn.commit()
             
             lang_icon = get_language_icon(final_score)
-            bot.send_message(chat_id, f"🎯 Точность: {final_score}% , говоришь совсем как {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
+            bot.send_message(chat_id, f"🎯 Точность: {final_score}% , говоришь совсем как ... {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
             bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
