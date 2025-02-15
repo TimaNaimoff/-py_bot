@@ -324,7 +324,7 @@ def remove_silence(audio_path):
     try:
         logging.debug(f"[remove_silence] Processing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40)
+        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-55, min_silence_len=200)
         if not non_silent_chunks:
             return audio_path
         start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
@@ -377,7 +377,32 @@ def analyze_speech(user_audio, reference_audio):
     shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
     
     return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
-@bot.message_handler(content_types=['voice'])
+
+def transcribe_audio(wav_path):
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(wav_path) as source:
+        recognizer.adjust_for_ambient_noise(source, duration=0.5)
+        audio_chunks = []
+        while True:
+            try:
+                chunk = recognizer.record(source, duration=4)
+                audio_chunks.append(chunk)
+            except EOFError:
+                break
+
+    full_transcription = []
+    for chunk in audio_chunks:
+        try:
+            text = recognizer.recognize_google(chunk).lower()
+            full_transcription.append(text)
+        except sr.UnknownValueError:
+            continue
+        except sr.RequestError as e:
+            logging.error(f"[transcribe_audio] Google Speech API error: {e}")
+            return None
+    
+    return " ".join(full_transcription)
+
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
@@ -408,12 +433,11 @@ def check_voice_answer(message):
     logging.debug(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
     pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
     
-    recognizer = sr.Recognizer()
-    with sr.AudioFile(wav_path) as source:
-        audio_data = recognizer.record(source)
-    
     try:
-        user_transcription = recognizer.recognize_google(audio_data).lower()
+        user_transcription = transcribe_audio(wav_path)
+        if not user_transcription:
+            raise sr.UnknownValueError
+
         correct_transcription = session["correct_answer"].lower()
         match_percentage = compare_texts(user_transcription, correct_transcription)
         
@@ -429,7 +453,6 @@ def check_voice_answer(message):
         bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
-
 
 
 
