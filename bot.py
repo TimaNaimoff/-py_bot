@@ -369,7 +369,7 @@ def check_voice_answer(message):
         
         final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
         base_points = session["difficulty"]
-        task_points = base_points + final_score#int(final_score // 10)
+        task_points = base_points + int(final_score // 10)
         
         logging.debug(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
         
