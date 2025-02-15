@@ -288,7 +288,7 @@ def send_question(message):
             if rand_choice == 1:
                 is_speaking_task = True
         
-        if difficulty in [1, 10] and random.randint(1, 3) == 1:
+        if difficulty in [3, 10] and random.randint(1, 3) == 1:
             difficulty = 7 if difficulty == 1 else 15
             is_audio_only = True
         
@@ -324,10 +324,11 @@ def send_question(message):
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
-    logging.debug(f"[check_voice_answer] Chat {chat_id}: session found = {session is not None}")
+
+
     
     if not session or not session.get("is_speaking_task"):
-        logging.warning(f"[check_voice_answer] Chat {chat_id}: No active speaking task.")
+        
         return
     
     file_id = message.voice.file_id
@@ -344,7 +345,7 @@ def check_voice_answer(message):
     
     tts_file = speak_text(session["correct_answer"])
     
-    logging.debug(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
+
     pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
     
     recognizer = sr.Recognizer()
@@ -360,11 +361,11 @@ def check_voice_answer(message):
         base_points = session["difficulty"]
         task_points = base_points + int(final_score // 10)
         
-        logging.debug(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
+
         
         bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
     except sr.UnknownValueError:
-        logging.error(f"[check_voice_answer] Chat {chat_id}: Speech recognition failed.")
+
         bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
@@ -445,7 +446,7 @@ def check_answer(message):
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
     
     if user_answer == correct_answer:
-        log_event(user_id, username, f"8") 
+
         update_user_stats(user_id, username, difficulty, elapsed_time)
         transcription = get_transcription(correct_answer)
         
