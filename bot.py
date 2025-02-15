@@ -359,24 +359,32 @@ def match_audio_length(user_audio, reference_audio):
     reference_sound = reference_sound.extract_part(from_time=0, to_time=min_duration)
     
     return user_sound, reference_sound
-
 def analyze_speech(user_audio, reference_audio):
-    user_audio = remove_silence(user_audio)
-    reference_audio = remove_silence(reference_audio)
-    
-    user_audio = normalize_audio(user_audio)
-    reference_audio = normalize_audio(reference_audio)
-    
-    user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
-    
-    user_pitch = user_sound.to_pitch().selected_array['frequency']
-    ref_pitch = reference_sound.to_pitch().selected_array['frequency']
-    pitch_score = 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch)) if user_pitch.size > 0 and ref_pitch.size > 0 else 0
-    
-    jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
-    shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
-    
-    return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
+    try:
+        user_audio = remove_silence(user_audio)
+        reference_audio = remove_silence(reference_audio)
+        
+        user_audio = normalize_audio(user_audio)
+        reference_audio = normalize_audio(reference_audio)
+        
+        user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
+        
+        user_pitch = user_sound.to_pitch().selected_array['frequency']
+        ref_pitch = reference_sound.to_pitch().selected_array['frequency']
+        
+        if user_pitch.size == 0 or ref_pitch.size == 0:
+            logging.error(f"[analyze_speech] Empty pitch array: user={user_pitch.size}, ref={ref_pitch.size}")
+            return 0, 0, 0
+        
+        pitch_score = 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch))
+        jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10
+        shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10
+        
+        return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
+
+    except Exception as e:
+        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
+        return 0, 0, 0
 
 def transcribe_audio(wav_path):
     recognizer = sr.Recognizer()
