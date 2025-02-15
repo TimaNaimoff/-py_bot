@@ -322,18 +322,16 @@ def send_question(message):
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
-    logging.info(f"[check_voice_answer] Обработчик вызван. Chat ID: {chat_id}")
-
+    logging.debug(f"[check_voice_answer] Chat {chat_id}: session found = {session is not None}")
+    
     if not session:
-        logging.warning(f"[check_voice_answer] Нет активной сессии для Chat {chat_id}. Игнорируем.")
+        logging.warning(f"[check_voice_answer] Chat {chat_id}: No active session.")
         return
     
     if not session.get("is_speaking_task"):
-        logging.warning(f"[check_voice_answer] Вопрос не требует голосового ответа. Игнорируем.")
+        logging.warning(f"[check_voice_answer] Chat {chat_id}: Received voice but task is not speaking. Ignoring.")
         return
     
-    logging.info(f"[check_voice_answer] Получен голосовой ответ от Chat {chat_id}. Начинаем обработку.")
-
     file_id = message.voice.file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -342,16 +340,22 @@ def check_voice_answer(message):
     with open(audio_path, "wb") as f:
         f.write(downloaded_file)
     
-    logging.info(f"[check_voice_answer] Голосовой файл сохранён как {audio_path}. Конвертация в WAV...")
-    
     wav_path = f"voice_{chat_id}.wav"
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
     
-    logging.info(f"[check_voice_answer] Конвертация завершена. Анализируем речь...")
-    
     tts_file = speak_text(session["correct_answer"])
-    pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
+    
+    logging.debug(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
+    
+    try:
+        pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
+        logging.debug(f"[check_voice_answer] Chat {chat_id}: Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
+    except Exception as e:
+        logging.error(f"[check_voice_answer] Chat {chat_id}: Error in analyze_speech: {e}")
+        bot.send_message(chat_id, "❌ Ошибка анализа речи. Попробуй снова.")
+        os.remove(wav_path)
+        return
     
     recognizer = sr.Recognizer()
     with sr.AudioFile(wav_path) as source:
@@ -366,36 +370,33 @@ def check_voice_answer(message):
         base_points = session["difficulty"]
         task_points = base_points + int(final_score // 10)
         
-        logging.info(f"[check_voice_answer] Оценка речи: точность={match_percentage}%, pitch={pitch_score}, jitter={jitter_score}, shimmer={shimmer_score}")
+        logging.debug(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
         
         bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
     except sr.UnknownValueError:
-        logging.error(f"[check_voice_answer] Ошибка распознавания речи для Chat {chat_id}.")
+        logging.error(f"[check_voice_answer] Chat {chat_id}: Speech recognition failed.")
         bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
-    logging.info(f"[check_voice_answer] Файл {wav_path} удалён, обработка завершена.")
 
 
 
 
 def analyze_speech(user_audio, reference_audio):
-    user_sound = parselmouth.Sound(user_audio)
-    reference_sound = parselmouth.Sound(reference_audio)
-    
-    pitch_user = user_sound.to_pitch()
-    pitch_ref = reference_sound.to_pitch()
-    pitch_score = 100 - abs(pitch_user.get_mean() - pitch_ref.get_mean()) if pitch_user.get_mean() and pitch_ref.get_mean() else 0
-    
-    jitter_user = user_sound.to_jitter()
-    jitter_ref = reference_sound.to_jitter()
-    jitter_score = 100 - abs(jitter_user - jitter_ref) * 1000 if jitter_user and jitter_ref else 0
-    
-    shimmer_user = user_sound.to_shimmer()
-    shimmer_ref = reference_sound.to_shimmer()
-    shimmer_score = 100 - abs(shimmer_user - shimmer_ref) * 1000 if shimmer_user and shimmer_ref else 0
-    
-    return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
+    try:
+        user_sound = parselmouth.Sound(user_audio)
+        reference_sound = parselmouth.Sound(reference_audio)
+
+        pitch_score = 100 - abs(user_sound.to_pitch().get_mean() - reference_sound.to_pitch().get_mean()) if user_sound.to_pitch().get_mean() and reference_sound.to_pitch().get_mean() else 0
+        jitter_score = 100 - abs(user_sound.to_jitter() - reference_sound.to_jitter()) * 1000 if user_sound.to_jitter() and reference_sound.to_jitter() else 0
+        shimmer_score = 100 - abs(user_sound.to_shimmer() - reference_sound.to_shimmer()) * 1000 if user_sound.to_shimmer() and reference_sound.to_shimmer() else 0
+        
+        logging.debug(f"[analyze_speech] Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
+        
+        return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
+    except Exception as e:
+        logging.error(f"[analyze_speech] Error processing audio: {e}")
+        return 0, 0, 0
 
 def compare_texts(user_text, correct_text):
     user_words = set(re.findall(r'\w+', user_text))
