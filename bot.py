@@ -320,19 +320,25 @@ def send_question(message):
 
 def remove_silence(audio_path):
     try:
-        logging.info(f"[remove_silence] Начата обработка файла: {audio_path}")
         sound = AudioSegment.from_file(audio_path, format="wav")
-        logging.info(f"[remove_silence] Файл загружен, длительность: {len(sound)} мс")
-        
         trimmed_sound = silence.strip_silence(sound, silence_thresh=-40)
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
-
-        logging.info(f"[remove_silence] Обработка завершена. Длительность после обрезки: {len(trimmed_sound)} мс. Файл сохранён: {trimmed_path}")
         return trimmed_path
     except Exception as e:
-        logging.error(f"[remove_silence] Ошибка при обработке {audio_path}: {e}")
-        return audio_path  # В случае ошибки возвращаем оригинальный файл
+        logging.error(f"[remove_silence] Error processing {audio_path}: {e}")
+        return audio_path
+
+def normalize_audio(audio_path):
+    try:
+        sound = AudioSegment.from_file(audio_path, format="wav")
+        normalized_sound = sound.apply_gain(-sound.max_dBFS)
+        normalized_path = "normalized_" + audio_path
+        normalized_sound.export(normalized_path, format="wav")
+        return normalized_path
+    except Exception as e:
+        logging.error(f"[normalize_audio] Error normalizing {audio_path}: {e}")
+        return audio_path
 
 def match_audio_length(user_audio, reference_audio):
     user_sound = parselmouth.Sound(user_audio)
@@ -344,9 +350,13 @@ def match_audio_length(user_audio, reference_audio):
     
     return user_sound, reference_sound
 
+@bot.message_handler(content_types=['voice'])
 def analyze_speech(user_audio, reference_audio):
     user_audio = remove_silence(user_audio)
     reference_audio = remove_silence(reference_audio)
+    
+    user_audio = normalize_audio(user_audio)
+    reference_audio = normalize_audio(reference_audio)
     
     user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
     
@@ -358,7 +368,7 @@ def analyze_speech(user_audio, reference_audio):
     shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
     
     return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
-@bot.message_handler(content_types=['voice'])
+
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
