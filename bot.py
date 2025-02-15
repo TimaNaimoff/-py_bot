@@ -399,7 +399,6 @@ def analyze_speech(user_audio, reference_audio):
         logging.error(f"[analyze_speech] Error analyzing speech: {e}")
         return 0, 0, 0
 
-    
 @bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
@@ -433,26 +432,20 @@ def check_voice_answer(message):
         pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
     except Exception as e:
         logging.error(f"[analyze_speech] Error analyzing speech: {e}")
-    try:
-        logging.info(f"[check_voice_answer] Chat {chat_id}: Transcribing speech...")
-        user_transcription = transcribe_audio(wav_path)
-        if not user_transcription:
-            raise sr.UnknownValueError
-        logging.info(f"[check_voice_answer] Chat {chat_id}: lower speech...")
-        correct_transcription = session["correct_answer"].lower()
-        logging.info(f"[check_voice_answer] Chat {chat_id}: comparing speech...")
-        match_percentage = compare_texts(user_transcription, correct_transcription)
-        
-        final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
-        base_points = session["difficulty"]
-        task_points = base_points + int(final_score // 10)
-        
-        logging.info(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
-        
-        bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
-    except sr.UnknownValueError:
-        logging.error(f"[check_voice_answer] Chat {chat_id}: Speech recognition failed.")
-        bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
+    
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(wav_path) as source:
+        try:
+            audio = recognizer.record(source)
+            user_transcription = recognizer.recognize_google(audio).lower()
+            logging.info(f"[check_voice_answer] Transcribed speech: {user_transcription}")
+            correct_transcription = session["correct_answer"].lower()
+            match_percentage = compare_texts(user_transcription, correct_transcription)
+            final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
+            bot.send_message(chat_id, f"🎯 Точность: {final_score}%")
+        except sr.UnknownValueError:
+            logging.error(f"[check_voice_answer] Speech recognition failed.")
+            bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
 
