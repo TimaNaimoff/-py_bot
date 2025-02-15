@@ -320,7 +320,6 @@ def send_question(message):
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
 
-@bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
@@ -343,22 +342,15 @@ def check_voice_answer(message):
         f.write(downloaded_file)
     
     wav_path = f"voice_{chat_id}.wav"
-    remove_silence(wav_path)
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
+    
+    remove_silence(wav_path)
     
     tts_file = speak_text(session["correct_answer"])
     
     logging.debug(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
-    
-    try:
-        pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
-        logging.debug(f"[check_voice_answer] Chat {chat_id}: Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
-    except Exception as e:
-        logging.error(f"[check_voice_answer] Chat {chat_id}: Error in analyze_speech: {e}")
-        bot.send_message(chat_id, "❌ Ошибка анализа речи. Попробуй снова.")
-        os.remove(wav_path)
-        return
+    pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
     
     recognizer = sr.Recognizer()
     with sr.AudioFile(wav_path) as source:
@@ -386,40 +378,18 @@ def check_voice_answer(message):
 
 
 def analyze_speech(user_audio, reference_audio):
-    try:
-        user_sound = parselmouth.Sound(user_audio)
-        reference_sound = parselmouth.Sound(reference_audio)
+    user_sound = parselmouth.Sound(user_audio)
+    reference_sound = parselmouth.Sound(reference_audio)
+    
+    user_pitch = user_sound.to_pitch().selected_array['frequency']
+    ref_pitch = reference_sound.to_pitch().selected_array['frequency']
+    pitch_score = 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch)) if user_pitch.size > 0 and ref_pitch.size > 0 else 0
+    
+    jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
+    shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
+    
+    return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
 
-        user_pitch = user_sound.to_pitch()
-        reference_pitch = reference_sound.to_pitch()
-
-        user_pitch_values = user_pitch.selected_array['frequency']
-        reference_pitch_values = reference_pitch.selected_array['frequency']
-
-        user_pitch_mean = user_pitch_values[user_pitch_values > 0].mean() if len(user_pitch_values[user_pitch_values > 0]) > 0 else 0
-        reference_pitch_mean = reference_pitch_values[reference_pitch_values > 0].mean() if len(reference_pitch_values[reference_pitch_values > 0]) > 0 else 0
-
-        pitch_score = max(0, 100 - abs(user_pitch_mean - reference_pitch_mean))
-
-        # Jitter (Среднее абсолютное отклонение частоты)
-        user_jitter = np.mean(np.abs(np.diff(user_pitch_values[user_pitch_values > 0]))) if len(user_pitch_values[user_pitch_values > 0]) > 1 else 0
-        reference_jitter = np.mean(np.abs(np.diff(reference_pitch_values[reference_pitch_values > 0]))) if len(reference_pitch_values[reference_pitch_values > 0]) > 1 else 0
-        jitter_score = max(0, 100 - abs(user_jitter - reference_jitter) * 1000)
-
-        # Shimmer (Среднее абсолютное отклонение амплитуды)
-        user_intensity = user_sound.to_intensity().values
-        reference_intensity = reference_sound.to_intensity().values
-        user_shimmer = np.mean(np.abs(np.diff(user_intensity[user_intensity > 0]))) if len(user_intensity[user_intensity > 0]) > 1 else 0
-        reference_shimmer = np.mean(np.abs(np.diff(reference_intensity[reference_intensity > 0]))) if len(reference_intensity[reference_intensity > 0]) > 1 else 0
-        shimmer_score = max(0, 100 - abs(user_shimmer - reference_shimmer) * 1000)
-
-        logging.debug(f"[analyze_speech] Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
-
-        return pitch_score, jitter_score, shimmer_score
-
-    except Exception as e:
-        logging.error(f"[analyze_speech] Error processing audio: {e}")
-        return 0, 0, 0
 def remove_silence(audio_path):
     sound = AudioSegment.from_wav(audio_path)
     non_silent_ranges = detect_nonsilent(sound, min_silence_len=300, silence_thresh=sound.dBFS-16)
