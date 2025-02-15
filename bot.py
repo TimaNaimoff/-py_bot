@@ -12,6 +12,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import threading
 from gtts import gTTS
 import re
+import parselmouth
+import speech_recognition as sr
 
 app = Flask(__name__)
 
@@ -269,7 +271,6 @@ def play_audio(call):
                 bot.send_audio(chat_id, audio)
 
 
-@bot.message_handler(commands=['question'])
 def send_question(message):
     chat_id = message.chat.id  
     username = message.from_user.username or message.from_user.first_name
@@ -278,8 +279,13 @@ def send_question(message):
     if question_data:
         word, description, difficulty = question_data
         is_audio_only = False
+        is_speaking_task = False
         
-        # 1 и 10 уровень могут стать 7 и 15 с вероятностью 1 к 3
+        if difficulty in [3, 10]:
+            rand_choice = random.randint(1, 4)
+            if rand_choice == 1:
+                is_speaking_task = True
+        
         if difficulty in [1, 10] and random.randint(1, 3) == 1:
             difficulty = 7 if difficulty == 1 else 15
             is_audio_only = True
@@ -291,7 +297,8 @@ def send_question(message):
             "correct_answer": word.lower(),
             "difficulty": difficulty,
             "start_time": start_time,
-            "question_text": description
+            "question_text": description,
+            "is_speaking_task": is_speaking_task
         }
         
         tts_file = speak_text(description)
@@ -300,7 +307,9 @@ def send_question(message):
             with open(tts_file, "rb") as audio:
                 bot.send_audio(chat_id, audio)
         
-        if not is_audio_only:
+        if is_speaking_task:
+            bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji}", parse_mode="Markdown")
+        elif not is_audio_only:
             bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
         else:
             bot.send_message(chat_id, f"🎙️ *Голосовое задание* **{difficulty} - lvl** {emoji}", parse_mode="Markdown")
@@ -309,6 +318,68 @@ def send_question(message):
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
+@bot.message_handler(content_types=['voice'])
+def check_voice_answer(message):
+    chat_id = message.chat.id
+    session = user_sessions.get(chat_id)
+    if not session or not session.get("is_speaking_task"):
+        return
+    
+    file_id = message.voice.file_id
+    file_info = bot.get_file(file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    
+    audio_path = f"voice_{chat_id}.ogg"
+    with open(audio_path, "wb") as f:
+        f.write(downloaded_file)
+    
+    tts_file = speak_text(session["correct_answer"])  # Получаем эталонное аудио
+    
+    pitch_score, jitter_score, shimmer_score = analyze_speech(audio_path, tts_file)
+    
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(audio_path) as source:
+        audio_data = recognizer.record(source)
+    
+    try:
+        user_transcription = recognizer.recognize_google(audio_data).lower()
+        correct_transcription = session["correct_answer"].lower()
+        match_percentage = compare_texts(user_transcription, correct_transcription)
+        
+        final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
+        base_points = session["difficulty"]
+        task_points = base_points + int(final_score // 10)
+        
+        bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
+    except sr.UnknownValueError:
+        bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
+    
+    os.remove(audio_path)
+
+def analyze_speech(user_audio, reference_audio):
+    user_sound = parselmouth.Sound(user_audio)
+    reference_sound = parselmouth.Sound(reference_audio)
+    
+    pitch_user = user_sound.to_pitch()
+    pitch_ref = reference_sound.to_pitch()
+    pitch_score = 100 - abs(pitch_user.mean() - pitch_ref.mean())
+    
+    jitter_user = user_sound.get_jitter()
+    jitter_ref = reference_sound.get_jitter()
+    jitter_score = 100 - abs(jitter_user - jitter_ref) * 1000
+    
+    shimmer_user = user_sound.get_shimmer()
+    shimmer_ref = reference_sound.get_shimmer()
+    shimmer_score = 100 - abs(shimmer_user - shimmer_ref) * 1000
+    
+    return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
+
+def compare_texts(user_text, correct_text):
+    user_words = set(re.findall(r'\w+', user_text))
+    correct_words = set(re.findall(r'\w+', correct_text))
+    
+    common_words = user_words & correct_words
+    return int((len(common_words) / len(correct_words)) * 100)
 
 
 
@@ -329,6 +400,19 @@ def handle_commands(message):
         clean(message)
 
 
+
+
+API_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/"
+
+def get_transcription(word):
+    try:
+        response = requests.get(f"{API_URL}{word}")
+        data = response.json()
+        return data[0]["phonetics"][0]["text"] if "phonetics" in data[0] else ""
+    except Exception as e:
+        print(f"Ошибка получения транскрипции: {e}")
+        return ""
+
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text) and not message.text.startswith("#"))
 def check_answer(message):
     chat_id = message.chat.id
@@ -338,67 +422,50 @@ def check_answer(message):
     if not session:
         return
 
-    correct_answer = session["correct_answer"]
+    correct_answer = session["correct_answer"].lower()
     difficulty = session["difficulty"]
     elapsed_time = int(time.time() - session["start_time"])
     user_answer = message.text.strip().lower()
-
+    
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
-
+    
     if user_answer == correct_answer:
         log_event(user_id, username, f"8") 
-        update_user_stats(message.from_user.id, username, difficulty, elapsed_time)
-       
-        if difficulty == 1:
-            success_message = f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer}"
-        elif difficulty == 3:
-            success_message = f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer}"
-        elif difficulty == 7:
-            success_message = f"🎧 {username}, Умеешь слушать 👂\nСлово: {correct_answer}"
-        elif difficulty == 10:
-            success_message = f"🔥 {username}, Умничка 💪\nСлово: {correct_answer}"
-        elif difficulty == 15:
-            success_message = f"🎻 {username},  Может , станешь музыкантом ? Великолепно ✨\nСлово: {correct_answer}"
-        else:
-            success_message = f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer}"
-        # Озвучка правильного ответа
-        #tts_file = speak_text(correct_answer)
-        #audio_url = upload_audio(tts_file)  # Функция загрузки на сервер
+        update_user_stats(user_id, username, difficulty, elapsed_time)
+        transcription = get_transcription(correct_answer)
         
-        # Создаем кнопку с озвучкой
-        #markup = InlineKeyboardMarkup()
-        #markup.add(InlineKeyboardButton("🎙 Озвучить", url=audio_url))
-        #markup = None 
-        bot.send_message(chat_id, success_message)  # Добавляем кнопки к сообщению
+        success_messages = {
+            1: f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer} {transcription}",
+            3: f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer} {transcription}",
+            7: f"🎧 {username}, Умеешь слушать 👂\nСлово: {correct_answer} {transcription}",
+            10: f"🔥 {username}, Умничка 💪\nСлово: {correct_answer} {transcription}",
+            15: f"🎻 {username}, Может, станешь музыкантом? Великолепно ✨\nСлово: {correct_answer} {transcription}",
+        }
+        
+        success_message = success_messages.get(difficulty, f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer} {transcription}")
+        
+        bot.send_message(chat_id, success_message)
         del user_sessions[chat_id]
-
-
     else:
-        if difficulty == 1:
-            feedback = f"😕 {username}, балони йепсан! Подумай ещё раз."
-        elif difficulty == 3:
-            feedback = f"🤨 {username}, это что за ответ ?!?!?!?. Марш учить !"
-        elif difficulty == 7:
-            feedback = f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека ! "
-        elif difficulty == 10:
-            feedback = f"🧠💨 {username}, мозг вышел из чата"
-        elif difficulty == 15:
-            feedback = f"🤯👂 {username}, уши , вы существуете ?!?!?!? "
-        else:
-            feedback = f"❌ {username}, неверно. Попробуй снова."
-
+        feedback_messages = {
+            1: f"😕 {username}, балони йепсан! Подумай ещё раз.",
+            3: f"🤨 {username}, это что за ответ ?!?!?!?. Марш учить!",
+            7: f"🧏 {username}, Рыбак рыбака НЕ СЛЫШИТ издалека!",
+            10: f"🧠💨 {username}, мозг вышел из чата",
+            15: f"🤯👂 {username}, уши, вы существуете ?!?!?!?",
+        }
+        
+        feedback = feedback_messages.get(difficulty, f"❌ {username}, неверно. Попробуй снова.")
         hint = get_hint(correct_answer)
         bot.send_message(chat_id, f"{feedback}\nПодсказка: {hint}")
         time.sleep(4)
-
+    
     if session.get("new_question_sent"):
         return
-
+    
     send_main_menu(chat_id)
     session["new_question_sent"] = True
     send_question(message)
-
-
 
 
 

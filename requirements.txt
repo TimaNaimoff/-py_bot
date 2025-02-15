@@ -42,4 +42,11 @@ pyTelegramBotAPI==4.15.3
 Flask==3.0.0
 gunicorn==21.2.0
 gTTS==2.5.4
+telebot==0.0.5
+Flask==2.2.3
+SpeechRecognition==3.10.0
+parselmouth==0.4.1
+numpy==1.24.2
+pydub==0.25.1
+
 
