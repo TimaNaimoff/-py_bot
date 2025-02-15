@@ -402,7 +402,7 @@ def transcribe_audio(wav_path):
             return None
     
     return " ".join(full_transcription)
-
+@bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
