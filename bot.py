@@ -322,16 +322,16 @@ def send_question(message):
 
 def remove_silence(audio_path):
     try:
-        logging.info(f"[remove_silence] Processing {audio_path}")
+        logging.debug(f"[remove_silence] Processing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-55, min_silence_len=200)
+        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-50, min_silence_len=150)
         if not non_silent_chunks:
             return audio_path
         start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
         trimmed_sound = sound[start_trim:end_trim]
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
-        logging.info(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
+        logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
         return trimmed_path
     except Exception as e:
         logging.error(f"[remove_silence] Error processing {audio_path}: {e}")
@@ -339,12 +339,12 @@ def remove_silence(audio_path):
 
 def normalize_audio(audio_path):
     try:
-        logging.info(f"[normalize_audio] Normalizing {audio_path}")
+        logging.debug(f"[normalize_audio] Normalizing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
         normalized_sound = sound.apply_gain(-sound.max_dBFS)
         normalized_path = "normalized_" + audio_path
         normalized_sound.export(normalized_path, format="wav")
-        logging.info(f"[normalize_audio] Normalized audio saved to {normalized_path}")
+        logging.debug(f"[normalize_audio] Normalized audio saved to {normalized_path}")
         return normalized_path
     except Exception as e:
         logging.error(f"[normalize_audio] Error normalizing {audio_path}: {e}")
@@ -352,23 +352,27 @@ def normalize_audio(audio_path):
 
 def match_audio_length(user_audio, reference_audio):
     try:
-        logging.info(f"[match_audio_length] Matching {user_audio} and {reference_audio}")
+        logging.debug(f"[match_audio_length] Matching {user_audio} and {reference_audio}")
         user_sound = parselmouth.Sound(user_audio)
         reference_sound = parselmouth.Sound(reference_audio)
+        
+        if user_sound is None or reference_sound is None:
+            logging.error("[match_audio_length] One or both audio files could not be loaded.")
+            return None, None
         
         min_duration = min(user_sound.get_total_duration(), reference_sound.get_total_duration())
         user_sound = user_sound.extract_part(from_time=0, to_time=min_duration)
         reference_sound = reference_sound.extract_part(from_time=0, to_time=min_duration)
         
-        logging.info(f"[match_audio_length] Trimmed to {min_duration} seconds")
+        logging.debug(f"[match_audio_length] Trimmed to {min_duration} seconds")
         return user_sound, reference_sound
     except Exception as e:
         logging.error(f"[match_audio_length] Error processing audio: {e}")
         return None, None
 
-    
 def analyze_speech(user_audio, reference_audio):
     try:
+        logging.debug(f"[analyze_speech] Analyzing {user_audio} and {reference_audio}")
         user_audio = remove_silence(user_audio)
         reference_audio = remove_silence(reference_audio)
         
@@ -376,6 +380,9 @@ def analyze_speech(user_audio, reference_audio):
         reference_audio = normalize_audio(reference_audio)
         
         user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
+        if user_sound is None or reference_sound is None:
+            logging.error("[analyze_speech] Failed to process audio, returning default scores.")
+            return 0, 0, 0
         
         user_pitch = user_sound.to_pitch().selected_array['frequency']
         ref_pitch = reference_sound.to_pitch().selected_array['frequency']
@@ -389,10 +396,10 @@ def analyze_speech(user_audio, reference_audio):
         shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10
         
         return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
-
     except Exception as e:
         logging.error(f"[analyze_speech] Error analyzing speech: {e}")
         return 0, 0, 0
+
 
 def transcribe_audio(wav_path):
     recognizer = sr.Recognizer()

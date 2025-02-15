@@ -46,5 +46,4 @@ telebot==0.0.5
 SpeechRecognition==3.10.0
 praat-parselmouth==0.4.5
 pydub==0.25.1
-librosa==0.10.1
 matplotlib==3.8.2
