@@ -371,7 +371,7 @@ def analyze_speech(user_audio, reference_audio):
     shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
     
     return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
-
+@bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
