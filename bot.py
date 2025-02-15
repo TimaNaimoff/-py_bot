@@ -322,13 +322,18 @@ def send_question(message):
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
+    logging.info(f"[check_voice_answer] Обработчик вызван. Chat ID: {chat_id}")
 
-
-    
-    if not session or not session.get("is_speaking_task"):
-        
+    if not session:
+        logging.warning(f"[check_voice_answer] Нет активной сессии для Chat {chat_id}. Игнорируем.")
         return
     
+    if not session.get("is_speaking_task"):
+        logging.warning(f"[check_voice_answer] Вопрос не требует голосового ответа. Игнорируем.")
+        return
+    
+    logging.info(f"[check_voice_answer] Получен голосовой ответ от Chat {chat_id}. Начинаем обработку.")
+
     file_id = message.voice.file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -337,13 +342,15 @@ def check_voice_answer(message):
     with open(audio_path, "wb") as f:
         f.write(downloaded_file)
     
+    logging.info(f"[check_voice_answer] Голосовой файл сохранён как {audio_path}. Конвертация в WAV...")
+    
     wav_path = f"voice_{chat_id}.wav"
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
     
-    tts_file = speak_text(session["correct_answer"])
+    logging.info(f"[check_voice_answer] Конвертация завершена. Анализируем речь...")
     
-
+    tts_file = speak_text(session["correct_answer"])
     pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
     
     recognizer = sr.Recognizer()
@@ -359,14 +366,16 @@ def check_voice_answer(message):
         base_points = session["difficulty"]
         task_points = base_points + int(final_score // 10)
         
-
+        logging.info(f"[check_voice_answer] Оценка речи: точность={match_percentage}%, pitch={pitch_score}, jitter={jitter_score}, shimmer={shimmer_score}")
         
         bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
     except sr.UnknownValueError:
-
+        logging.error(f"[check_voice_answer] Ошибка распознавания речи для Chat {chat_id}.")
         bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
+    logging.info(f"[check_voice_answer] Файл {wav_path} удалён, обработка завершена.")
+
 
 
 
