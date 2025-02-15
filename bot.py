@@ -465,8 +465,9 @@ def check_voice_answer(message):
         user_transcription = transcribe_audio(wav_path)
         if not user_transcription:
             raise sr.UnknownValueError
-
+        logging.info(f"[check_voice_answer] Chat {chat_id}: lower speech...")
         correct_transcription = session["correct_answer"].lower()
+        logging.info(f"[check_voice_answer] Chat {chat_id}: comparing speech...")
         match_percentage = compare_texts(user_transcription, correct_transcription)
         
         final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
