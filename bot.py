@@ -319,6 +319,17 @@ def send_question(message):
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
 
+def remove_silence(audio_path):
+    sound = AudioSegment.from_wav(audio_path)
+    non_silent_ranges = detect_nonsilent(sound, min_silence_len=300, silence_thresh=sound.dBFS-16)
+    
+    if non_silent_ranges:
+        start_trim = non_silent_ranges[0][0]
+        end_trim = non_silent_ranges[-1][1]
+        trimmed_sound = sound[start_trim:end_trim]
+        trimmed_sound.export(audio_path, format="wav")
+        logging.debug(f"[remove_silence] Trimmed audio: {start_trim}-{end_trim} ms")
+
 def match_audio_length(user_audio, reference_audio):
     user_sound = parselmouth.Sound(user_audio)
     reference_sound = parselmouth.Sound(reference_audio)
@@ -341,6 +352,7 @@ def analyze_speech(user_audio, reference_audio):
     
     return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
 
+@bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
@@ -365,6 +377,8 @@ def check_voice_answer(message):
     wav_path = f"voice_{chat_id}.wav"
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
+    
+    remove_silence(wav_path)
     
     tts_file = speak_text(session["correct_answer"])
     
@@ -392,6 +406,7 @@ def check_voice_answer(message):
         bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
+
 
 
 
