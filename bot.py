@@ -351,14 +351,22 @@ def normalize_audio(audio_path):
         return audio_path
 
 def match_audio_length(user_audio, reference_audio):
-    user_sound = parselmouth.Sound(user_audio)
-    reference_sound = parselmouth.Sound(reference_audio)
+    try:
+        logging.info(f"[match_audio_length] Matching {user_audio} and {reference_audio}")
+        user_sound = parselmouth.Sound(user_audio)
+        reference_sound = parselmouth.Sound(reference_audio)
+        
+        min_duration = min(user_sound.get_total_duration(), reference_sound.get_total_duration())
+        user_sound = user_sound.extract_part(from_time=0, to_time=min_duration)
+        reference_sound = reference_sound.extract_part(from_time=0, to_time=min_duration)
+        
+        logging.info(f"[match_audio_length] Trimmed to {min_duration} seconds")
+        return user_sound, reference_sound
+    except Exception as e:
+        logging.error(f"[match_audio_length] Error processing audio: {e}")
+        return None, None
+
     
-    min_duration = min(user_sound.get_total_duration(), reference_sound.get_total_duration())
-    user_sound = user_sound.extract_part(from_time=0, to_time=min_duration)
-    reference_sound = reference_sound.extract_part(from_time=0, to_time=min_duration)
-    
-    return user_sound, reference_sound
 def analyze_speech(user_audio, reference_audio):
     try:
         user_audio = remove_silence(user_audio)
