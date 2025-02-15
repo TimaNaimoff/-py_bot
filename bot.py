@@ -382,7 +382,7 @@ def analyze_speech(user_audio, reference_audio):
     mfcc_score = 100 - np.linalg.norm(user_mfcc - ref_mfcc)
     
     return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score), max(0, mfcc_score)
-
+@bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
