@@ -381,52 +381,61 @@ def check_voice_answer(message):
     session = user_sessions.get(chat_id)
     logging.debug(f"[check_voice_answer] Chat {chat_id}: session found = {session is not None}")
     
-    if not session:
-        logging.warning(f"[check_voice_answer] Chat {chat_id}: No active session.")
+    if not session or not session.get("is_speaking_task"):
+        logging.warning(f"[check_voice_answer] Chat {chat_id}: No active session or wrong task.")
         return
-    
-    if not session.get("is_speaking_task"):
-        logging.warning(f"[check_voice_answer] Chat {chat_id}: Received voice but task is not speaking. Ignoring.")
-        return
-    
+
     file_id = message.voice.file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
-    
+
     audio_path = f"voice_{chat_id}.ogg"
     with open(audio_path, "wb") as f:
         f.write(downloaded_file)
-    
+
     wav_path = f"voice_{chat_id}.wav"
-    AudioSegment.from_file(audio_path).export(wav_path, format="wav")
-    os.remove(audio_path)
-    
+    try:
+        AudioSegment.from_file(audio_path).set_frame_rate(16000).set_channels(1).export(wav_path, format="wav")
+        os.remove(audio_path)
+    except Exception as e:
+        logging.error(f"[check_voice_answer] Chat {chat_id}: Error converting audio - {e}")
+        bot.send_message(chat_id, "❌ Ошибка обработки аудио. Попробуй снова!")
+        return
+
+    if not os.path.exists(wav_path) or os.path.getsize(wav_path) == 0:
+        logging.error(f"[check_voice_answer] Chat {chat_id}: Invalid audio file.")
+        bot.send_message(chat_id, "❌ Ошибка обработки аудио. Попробуй снова!")
+        return
+
     tts_file = speak_text(session["correct_answer"])
-    
-    logging.debug(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
     pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
-    
+
     recognizer = sr.Recognizer()
     with sr.AudioFile(wav_path) as source:
+        recognizer.adjust_for_ambient_noise(source, duration=0.5)
         audio_data = recognizer.record(source)
-    
+
     try:
         user_transcription = recognizer.recognize_google(audio_data).lower()
         correct_transcription = session["correct_answer"].lower()
         match_percentage = compare_texts(user_transcription, correct_transcription)
-        
+
         final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
         base_points = session["difficulty"]
         task_points = base_points + int(final_score // 10)
-        
+
         logging.debug(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
-        
+
         bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
     except sr.UnknownValueError:
-        logging.error(f"[check_voice_answer] Chat {chat_id}: Speech recognition failed.")
-        bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
+        logging.error(f"[check_voice_answer] Chat {chat_id}: No speech detected or too noisy.")
+        bot.send_message(chat_id, "❌ Голос не распознан. Говори четче и громче.")
+    except sr.RequestError as e:
+        logging.error(f"[check_voice_answer] Chat {chat_id}: Google Speech API error: {e}")
+        bot.send_message(chat_id, "⚠️ Ошибка сервера Google Speech. Попробуй позже.")
     
     os.remove(wav_path)
+
 
 
 
