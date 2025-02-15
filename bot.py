@@ -179,32 +179,44 @@ def send_files(message):
         bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
 
 
+def get_language_icon(percentage):
+    if percentage < 20:
+        return "🇨🇳 Китайский новичок"
+    elif percentage < 40:
+        return "🇷🇺 Русский акцент"
+    elif percentage < 60:
+        return "🇮🇳 Индус с акцентом"
+    elif percentage < 80:
+        return "🇺🇸 Носитель, но не идеал"
+    else:
+        return "🇬🇧 Британский аристократ"
+
 def send_stats(data):
     if isinstance(data, telebot.types.Message):
         user_id = data.from_user.id
         chat_id = data.chat.id
-    else:  # Если это callback от кнопки
+    else:
         user_id = data.from_user.id
         chat_id = data.message.chat.id
     
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         stats = cursor.execute(
-            "SELECT score, answers_lvl1, answers_lvl3, answers_lvl7, answers_lvl10, answers_lvl15 , total_time FROM leaderboard WHERE user_id = ?",
+            "SELECT score, answers_lvl1, answers_lvl3, answers_lvl7, answers_lvl10, answers_lvl15, total_time, avg_percentage FROM leaderboard WHERE user_id = ?",
             (user_id,)
         ).fetchone()
     
     if stats:
-        score, lvl1, lvl3, lvl7 , lvl10, lvl15, total_time = stats
+        score, lvl1, lvl3, lvl7, lvl10, lvl15, total_time, avg_percentage = stats
         level = get_level(score)
         emoji = LEVEL_EMOJIS.get(level, "❓")
+        lang_icon = get_language_icon(avg_percentage)
         bot.send_message(
             chat_id,
-            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n 🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time} сек"
+            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time} сек\n📈 Средняя точность: {avg_percentage:.2f}% {lang_icon}"
         )
     else:
         bot.send_message(chat_id, "❌ У вас пока нет статистики.")
-
 
 
 @bot.message_handler(commands=['start'])
@@ -444,10 +456,9 @@ def check_voice_answer(message):
             correct_transcription = session["correct_answer"].lower()
             match_percentage = compare_texts(user_transcription, correct_transcription)
             final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
-            final_score = min(100, round(final_score * 2, 2))  # Ограничение 100
+            final_score = min(100, round(final_score * 2, 2))  
             
-            # Новая логика награждения
-            base_points = session["difficulty"]  # Исходный балл = сложность задания
+            base_points = session["difficulty"]
             awarded_points = base_points + (final_score / 10)
             awarded_points = round(awarded_points, 2)
             
@@ -455,22 +466,20 @@ def check_voice_answer(message):
             username = message.from_user.username or message.from_user.first_name
             update_user_stats(user_id, username, session["difficulty"], awarded_points)
             
-            # Обновление среднего процента
             with sqlite3.connect("quiz.db") as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT avg_percentage FROM leaderboard WHERE user_id = ?", (user_id,))
                 row = cursor.fetchone()
                 if row:
                     prev_avg = row[0]
-                    new_avg = (prev_avg + final_score) / 2  # Новая средняя арифметическая
+                    new_avg = (prev_avg + final_score) / 2
                     cursor.execute("UPDATE leaderboard SET avg_percentage = ? WHERE user_id = ?", (new_avg, user_id))
                 else:
                     cursor.execute("INSERT INTO leaderboard (user_id, username, avg_percentage) VALUES (?, ?, ?)", (user_id, username, final_score))
                 conn.commit()
             
-            bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
-            session["new_question_sent"] = True
-            send_question(message)
+            lang_icon = get_language_icon(final_score)
+            bot.send_message(chat_id, f"🎯 Точность: {final_score}% {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
             bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
