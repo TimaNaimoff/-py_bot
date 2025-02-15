@@ -307,7 +307,7 @@ def send_question(message):
                 bot.send_audio(chat_id, audio)
         
         if is_speaking_task:
-            bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji}", parse_mode="Markdown")
+            bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji} \n*definition*", parse_mode="Markdown")
         elif not is_audio_only:
             bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
         else:
@@ -433,7 +433,13 @@ def check_answer(message):
     username = message.from_user.username or message.from_user.first_name
     session = user_sessions.get(chat_id)
     user_id = message.from_user.id
+
     if not session:
+        return
+    
+    # Добавлена проверка, если задание - голосовое, игнорируем текстовый ответ
+    if session.get("is_speaking_task"):
+        logging.debug(f"[check_answer] Chat {chat_id}: Игнорируем текст, так как задание голосовое.")
         return
 
     correct_answer = session["correct_answer"].lower()
@@ -444,7 +450,6 @@ def check_answer(message):
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
     
     if user_answer == correct_answer:
-
         update_user_stats(user_id, username, difficulty, elapsed_time)
         transcription = get_transcription(correct_answer)
         
@@ -480,7 +485,6 @@ def check_answer(message):
     send_main_menu(chat_id)
     session["new_question_sent"] = True
     send_question(message)
-
 
 
 @bot.message_handler(commands=['global_rating'])
