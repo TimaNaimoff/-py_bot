@@ -97,7 +97,8 @@ def init_db():
                 answers_lvl7 INTEGER DEFAULT 0,
                 answers_lvl10 INTEGER DEFAULT 0,
                 answers_lvl15 INTEGER DEFAULT 0,
-                total_time INTEGER DEFAULT 0
+                total_time INTEGER DEFAULT 0,
+                avg_percentage REAL DEFAULT 0
             );
         ''')
         logging.info("База данных инициализирована.")
@@ -189,17 +190,17 @@ def send_stats(data):
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         stats = cursor.execute(
-            "SELECT score, answers_lvl1, answers_lvl3, answers_lvl7, answers_lvl10, answers_lvl15 , total_time FROM leaderboard WHERE user_id = ?",
+            "SELECT score, answers_lvl1, answers_lvl3, answers_lvl7, answers_lvl10, answers_lvl15, total_time, avg_percentage FROM leaderboard WHERE user_id = ?",
             (user_id,)
         ).fetchone()
     
     if stats:
-        score, lvl1, lvl3, lvl7 , lvl10, lvl15, total_time = stats
+        score, lvl1, lvl3, lvl7, lvl10, lvl15, total_time, avg_percentage = stats
         level = get_level(score)
         emoji = LEVEL_EMOJIS.get(level, "❓")
         bot.send_message(
             chat_id,
-            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n 🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time} сек"
+            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time} сек\n📈 Средняя точность: {avg_percentage:.2f}%"
         )
     else:
         bot.send_message(chat_id, "❌ У вас пока нет статистики.")
@@ -399,6 +400,7 @@ def analyze_speech(user_audio, reference_audio):
         logging.error(f"[analyze_speech] Error analyzing speech: {e}")
         return 0, 0, 0
 
+
 @bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
@@ -442,14 +444,36 @@ def check_voice_answer(message):
             correct_transcription = session["correct_answer"].lower()
             match_percentage = compare_texts(user_transcription, correct_transcription)
             final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
-            final_score = min(100, round(final_score * 2, 2))  # Округление вниз до 2 знаков и ограничение 100
-            bot.send_message(chat_id, f"🎯 Точность: {final_score}%")
+            final_score = min(100, round(final_score * 2, 2))  # Ограничение 100
+            
+            # Новая логика награждения
+            base_points = session["difficulty"]  # Исходный балл = сложность задания
+            awarded_points = base_points + (final_score / 10)
+            awarded_points = round(awarded_points, 2)
+            
+            user_id = message.from_user.id
+            username = message.from_user.username or message.from_user.first_name
+            update_user_stats(user_id, username, session["difficulty"], awarded_points)
+            
+            # Обновление среднего процента
+            with sqlite3.connect("quiz.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT avg_percentage FROM leaderboard WHERE user_id = ?", (user_id,))
+                row = cursor.fetchone()
+                if row:
+                    prev_avg = row[0]
+                    new_avg = (prev_avg + final_score) / 2  # Новая средняя арифметическая
+                    cursor.execute("UPDATE leaderboard SET avg_percentage = ? WHERE user_id = ?", (new_avg, user_id))
+                else:
+                    cursor.execute("INSERT INTO leaderboard (user_id, username, avg_percentage) VALUES (?, ?, ?)", (user_id, username, final_score))
+                conn.commit()
+            
+            bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
             bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
-
 
 
 def compare_texts(user_text, correct_text):
