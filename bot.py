@@ -288,7 +288,7 @@ def send_question(message):
             if rand_choice == 1:
                 is_speaking_task = True
         
-        if difficulty in [1, 10] and random.randint(1, 3) == 1:
+        if difficulty in [3, 10] and random.randint(1, 3) == 1:
             difficulty = 7 if difficulty == 1 else 15
             is_audio_only = True
         
