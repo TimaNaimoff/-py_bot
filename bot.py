@@ -321,8 +321,12 @@ def send_question(message):
 def remove_silence(audio_path):
     try:
         logging.debug(f"[remove_silence] Processing {audio_path}")
-        sound = AudioSegment.from_file(audio_path, format="wav")
-        trimmed_sound = silence.strip_silence(sound, silence_thresh=-40)
+        sound = AudioSegment.from_file(audio_path)
+        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40)
+        if not non_silent_chunks:
+            return audio_path
+        start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
+        trimmed_sound = sound[start_trim:end_trim]
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
         logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
@@ -334,7 +338,7 @@ def remove_silence(audio_path):
 def normalize_audio(audio_path):
     try:
         logging.debug(f"[normalize_audio] Normalizing {audio_path}")
-        sound = AudioSegment.from_file(audio_path, format="wav")
+        sound = AudioSegment.from_file(audio_path)
         normalized_sound = sound.apply_gain(-sound.max_dBFS)
         normalized_path = "normalized_" + audio_path
         normalized_sound.export(normalized_path, format="wav")
@@ -371,7 +375,7 @@ def analyze_speech(user_audio, reference_audio):
     shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
     
     return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
-@bot.message_handler(content_types=['voice'])
+
 def check_voice_answer(message):
     chat_id = message.chat.id
     session = user_sessions.get(chat_id)
@@ -423,6 +427,7 @@ def check_voice_answer(message):
         bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
+
 
 
 def compare_texts(user_text, correct_text):
