@@ -322,7 +322,7 @@ def send_question(message):
 
 def remove_silence(audio_path):
     try:
-        logging.debug(f"[remove_silence] Processing {audio_path}")
+        logging.info(f"[remove_silence] Processing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
         non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-55, min_silence_len=200)
         if not non_silent_chunks:
@@ -331,7 +331,7 @@ def remove_silence(audio_path):
         trimmed_sound = sound[start_trim:end_trim]
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
-        logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
+        logging.info(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
         return trimmed_path
     except Exception as e:
         logging.error(f"[remove_silence] Error processing {audio_path}: {e}")
@@ -339,12 +339,12 @@ def remove_silence(audio_path):
 
 def normalize_audio(audio_path):
     try:
-        logging.debug(f"[normalize_audio] Normalizing {audio_path}")
+        logging.info(f"[normalize_audio] Normalizing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
         normalized_sound = sound.apply_gain(-sound.max_dBFS)
         normalized_path = "normalized_" + audio_path
         normalized_sound.export(normalized_path, format="wav")
-        logging.debug(f"[normalize_audio] Normalized audio saved to {normalized_path}")
+        logging.info(f"[normalize_audio] Normalized audio saved to {normalized_path}")
         return normalized_path
     except Exception as e:
         logging.error(f"[normalize_audio] Error normalizing {audio_path}: {e}")
@@ -402,6 +402,8 @@ def transcribe_audio(wav_path):
             return None
     
     return " ".join(full_transcription)
+    
+    
 @bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
