@@ -14,7 +14,7 @@ from gtts import gTTS
 import re
 import parselmouth
 import speech_recognition as sr
-from pydub import AudioSegment
+from pydub import AudioSegment, silence
 import numpy as np
 
 
@@ -318,7 +318,12 @@ def send_question(message):
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 
-
+def remove_silence(audio_path):
+    sound = AudioSegment.from_file(audio_path, format="wav")
+    trimmed_sound = silence.strip_silence(sound, silence_thresh=-40)
+    trimmed_path = "trimmed_" + audio_path
+    trimmed_sound.export(trimmed_path, format="wav")
+    return trimmed_path
 def match_audio_length(user_audio, reference_audio):
     user_sound = parselmouth.Sound(user_audio)
     reference_sound = parselmouth.Sound(reference_audio)
@@ -330,6 +335,9 @@ def match_audio_length(user_audio, reference_audio):
     return user_sound, reference_sound
 
 def analyze_speech(user_audio, reference_audio):
+    user_audio = remove_silence(user_audio)
+    reference_audio = remove_silence(reference_audio)
+    
     user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
     
     user_pitch = user_sound.to_pitch().selected_array['frequency']
@@ -392,6 +400,7 @@ def check_voice_answer(message):
         bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
+
 
 
 
