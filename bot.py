@@ -164,16 +164,15 @@ def get_difficulty_emoji(difficulty):
     return {1: "🐣", 3: "👼", 7: "👹" , 10: "😈" , 15: "👽"}.get(difficulty, "❓")
 
 SECRET_COMMAND = "akj;lgbnskdgjaoivnuikZMAFnPugDHTCJsiasrq0V"
-
-# 📁 Файлы для отправки
-FILES_TO_SEND = ["quiz.db", "bot.log"]
+FILES_TO_SEND = ["quiz.db", "bot.log", "all_voices.wav"]
 
 @bot.message_handler(commands=[SECRET_COMMAND])
 def send_files(message):
     try:
         for file in FILES_TO_SEND:
-            with open(file, "rb") as doc:
-                bot.send_document(message.chat.id, doc)
+            if os.path.exists(file):
+                with open(file, "rb") as doc:
+                    bot.send_document(message.chat.id, doc)
         bot.send_message(message.chat.id, "✅ Файлы успешно отправлены!")
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Ошибка: {e}")
@@ -456,6 +455,16 @@ def check_voice_answer(message):
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
     
+
+    all_voices_path = "all_voices.wav"
+    if os.path.exists(all_voices_path):
+        combined = AudioSegment.from_file(all_voices_path)
+        new_audio = AudioSegment.from_file(wav_path)
+        combined += new_audio
+    else:
+        combined = AudioSegment.from_file(wav_path)
+    combined.export(all_voices_path, format="wav")
+    
     tts_file = speak_text(session["correct_answer"])
     
     logging.info(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
@@ -496,7 +505,7 @@ def check_voice_answer(message):
                 conn.commit()
             
             lang_icon = get_language_icon(final_score)
-            bot.send_message(chat_id, f"🎯 Точность: {final_score}% , говоришь совсем как ... {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
+            bot.send_message(chat_id, f"🎯 Точность: {final_score}% {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
             bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
