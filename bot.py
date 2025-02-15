@@ -15,6 +15,7 @@ import re
 import parselmouth
 import speech_recognition as sr
 from pydub import AudioSegment
+import numpy as np
 
 
 app = Flask(__name__)
