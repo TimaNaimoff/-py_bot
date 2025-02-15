@@ -16,8 +16,6 @@ import parselmouth
 import speech_recognition as sr
 from pydub import AudioSegment, silence
 import numpy as np
-import librosa
-import librosa.display
 
 
 app = Flask(__name__)
@@ -352,14 +350,6 @@ def match_audio_length(user_audio, reference_audio):
     
     return user_sound, reference_sound
 
-def extract_mfcc(audio_path, n_mfcc=13):
-    try:
-        y, sr = librosa.load(audio_path, sr=None)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
-        return np.mean(mfcc, axis=1)
-    except Exception as e:
-        logging.error(f"[extract_mfcc] Error extracting MFCC from {audio_path}: {e}")
-        return np.zeros(n_mfcc)
 
 def analyze_speech(user_audio, reference_audio):
     user_audio = remove_silence(user_audio)
@@ -377,11 +367,7 @@ def analyze_speech(user_audio, reference_audio):
     jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
     shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10 if user_pitch.size > 0 and ref_pitch.size > 0 else 0
     
-    user_mfcc = extract_mfcc(user_audio)
-    ref_mfcc = extract_mfcc(reference_audio)
-    mfcc_score = 100 - np.linalg.norm(user_mfcc - ref_mfcc)
-    
-    return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score), max(0, mfcc_score)
+    return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
 @bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
@@ -411,7 +397,7 @@ def check_voice_answer(message):
     tts_file = speak_text(session["correct_answer"])
     
     logging.debug(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
-    pitch_score, jitter_score, shimmer_score, mfcc_score = analyze_speech(wav_path, tts_file)
+    pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
     
     recognizer = sr.Recognizer()
     with sr.AudioFile(wav_path) as source:
@@ -422,11 +408,11 @@ def check_voice_answer(message):
         correct_transcription = session["correct_answer"].lower()
         match_percentage = compare_texts(user_transcription, correct_transcription)
         
-        final_score = (match_percentage + pitch_score + jitter_score + shimmer_score + mfcc_score) / 5
+        final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
         base_points = session["difficulty"]
         task_points = base_points + int(final_score // 10)
         
-        logging.debug(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}, MFCC={mfcc_score}")
+        logging.debug(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
         
         bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
     except sr.UnknownValueError:
