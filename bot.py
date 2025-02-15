@@ -449,8 +449,10 @@ def check_voice_answer(message):
     tts_file = speak_text(session["correct_answer"])
     
     logging.info(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
-    pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
-    
+    try:
+        pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
+    except Exception as e:
+        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
     try:
         user_transcription = transcribe_audio(wav_path)
         if not user_transcription:
