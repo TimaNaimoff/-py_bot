@@ -397,91 +397,9 @@ def analyze_speech(user_audio, reference_audio):
         
         return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
     except Exception as e:
-        logging.info(f"[analyze_speech] Error analyzing speech: {e}")
+        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
         return 0, 0, 0
 
-
-def transcribe_audio(wav_path):
-    recognizer = sr.Recognizer()
-    with sr.AudioFile(wav_path) as source:
-        recognizer.adjust_for_ambient_noise(source, duration=0.5)
-        audio_chunks = []
-        while True:
-            try:
-                chunk = recognizer.record(source, duration=4)
-                audio_chunks.append(chunk)
-            except EOFError:
-                break
-
-    full_transcription = []
-    for chunk in audio_chunks:
-        try:
-            text = recognizer.recognize_google(chunk).lower()
-            full_transcription.append(text)
-        except sr.UnknownValueError:
-            continue
-        except sr.RequestError as e:
-            logging.error(f"[transcribe_audio] Google Speech API error: {e}")
-            return None
-    
-    return " ".join(full_transcription)
-    
-    
-@bot.message_handler(content_types=['voice'])
-def check_voice_answer(message):
-    chat_id = message.chat.id
-    session = user_sessions.get(chat_id)
-    logging.info(f"[check_voice_answer] Chat {chat_id}: session found = {session is not None}")
-    
-    if not session:
-        logging.warning(f"[check_voice_answer] Chat {chat_id}: No active session.")
-        return
-    
-    if not session.get("is_speaking_task"):
-        logging.warning(f"[check_voice_answer] Chat {chat_id}: Received voice but task is not speaking. Ignoring.")
-        return
-    
-    file_id = message.voice.file_id
-    file_info = bot.get_file(file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
-    
-    audio_path = f"voice_{chat_id}.ogg"
-    with open(audio_path, "wb") as f:
-        f.write(downloaded_file)
-    
-    wav_path = f"voice_{chat_id}.wav"
-    AudioSegment.from_file(audio_path).export(wav_path, format="wav")
-    os.remove(audio_path)
-    
-    tts_file = speak_text(session["correct_answer"])
-    
-    logging.info(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
-    try:
-        pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
-    except Exception as e:
-        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
-    try:
-        logging.info(f"[check_voice_answer] Chat {chat_id}: Transcribing speech...")
-        user_transcription = transcribe_audio(wav_path)
-        if not user_transcription:
-            raise sr.UnknownValueError
-        logging.info(f"[check_voice_answer] Chat {chat_id}: lower speech...")
-        correct_transcription = session["correct_answer"].lower()
-        logging.info(f"[check_voice_answer] Chat {chat_id}: comparing speech...")
-        match_percentage = compare_texts(user_transcription, correct_transcription)
-        
-        final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
-        base_points = session["difficulty"]
-        task_points = base_points + int(final_score // 10)
-        
-        logging.info(f"[check_voice_answer] Chat {chat_id}: Match={match_percentage}%, Pitch={pitch_score}, Jitter={jitter_score}, Shimmer={shimmer_score}")
-        
-        bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Очки: {task_points}")
-    except sr.UnknownValueError:
-        logging.error(f"[check_voice_answer] Chat {chat_id}: Speech recognition failed.")
-        bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
-    
-    os.remove(wav_path)
 
 
 
