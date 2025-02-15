@@ -442,7 +442,7 @@ def check_voice_answer(message):
             correct_transcription = session["correct_answer"].lower()
             match_percentage = compare_texts(user_transcription, correct_transcription)
             final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
-	    final_score = min(100, round(final_score * 2, 2))  # Округление вниз до 2 знаков и ограничение 100
+            final_score = min(100, round(final_score * 2, 2))  # Округление вниз до 2 знаков и ограничение 100
             bot.send_message(chat_id, f"🎯 Точность: {final_score}%")
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
