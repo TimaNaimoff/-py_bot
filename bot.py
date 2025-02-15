@@ -190,17 +190,17 @@ def send_stats(data):
     with sqlite3.connect("quiz.db") as conn:
         cursor = conn.cursor()
         stats = cursor.execute(
-            "SELECT score, answers_lvl1, answers_lvl3, answers_lvl7, answers_lvl10, answers_lvl15, total_time, avg_percentage FROM leaderboard WHERE user_id = ?",
+            "SELECT score, answers_lvl1, answers_lvl3, answers_lvl7, answers_lvl10, answers_lvl15 , total_time FROM leaderboard WHERE user_id = ?",
             (user_id,)
         ).fetchone()
     
     if stats:
-        score, lvl1, lvl3, lvl7, lvl10, lvl15, total_time, avg_percentage = stats
+        score, lvl1, lvl3, lvl7 , lvl10, lvl15, total_time = stats
         level = get_level(score)
         emoji = LEVEL_EMOJIS.get(level, "❓")
         bot.send_message(
             chat_id,
-            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time} сек\n📈 Средняя точность: {avg_percentage:.2f}%"
+            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n 🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time} сек"
         )
     else:
         bot.send_message(chat_id, "❌ У вас пока нет статистики.")
@@ -469,12 +469,14 @@ def check_voice_answer(message):
                 conn.commit()
             
             bot.send_message(chat_id, f"🎯 Точность: {final_score}%\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
+            session["new_question_sent"] = True
+            send_question(message)
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
             bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
     
     os.remove(wav_path)
-
+    
 
 def compare_texts(user_text, correct_text):
     user_words = set(re.findall(r'\w+', user_text))
