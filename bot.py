@@ -461,6 +461,7 @@ def check_voice_answer(message):
     except Exception as e:
         logging.error(f"[analyze_speech] Error analyzing speech: {e}")
     try:
+        logging.info(f"[check_voice_answer] Chat {chat_id}: Transcribing speech...")
         user_transcription = transcribe_audio(wav_path)
         if not user_transcription:
             raise sr.UnknownValueError
