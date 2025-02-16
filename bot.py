@@ -507,12 +507,13 @@ def check_voice_answer(message):
             
             lang_icon = get_language_icon(final_score)
             bot.send_message(chat_id, f"🎯 Точность: {final_score}% {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
+            send_main_menu(chat_id)
+            session["new_question_sent"] = True
+            send_question(message)
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
             bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
-    send_main_menu(chat_id)
-    session["new_question_sent"] = True
-    send_question(message)
+    
     os.remove(wav_path)
     
     
