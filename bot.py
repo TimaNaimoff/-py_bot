@@ -456,23 +456,7 @@ def check_voice_answer(message):
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
     
-    # Добавляем голос в общий файл
-    all_voices_path = "all_voices.wav"
-    if os.path.exists(all_voices_path):
-        combined = AudioSegment.from_file(all_voices_path)
-        new_audio = AudioSegment.from_file(wav_path)
-        combined += new_audio
-    else:
-        combined = AudioSegment.from_file(wav_path)
-    combined.export(all_voices_path, format="wav")
-    
-    # Шифруем файл
-    key = base64.urlsafe_b64encode(SECRET_COMMAND.encode()[:32])
-    cipher = Fernet(key)
-    with open(all_voices_path, "rb") as f:
-        encrypted_data = cipher.encrypt(f.read())
-    with open(all_voices_path, "wb") as f:
-        f.write(encrypted_data)
+ 
     
     # Генерация эталонного аудио при 10 уровне
     if session["difficulty"] == 10:
