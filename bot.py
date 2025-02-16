@@ -164,7 +164,7 @@ def get_difficulty_emoji(difficulty):
     return {1: "🐣", 3: "👼", 7: "👹" , 10: "😈" , 15: "👽"}.get(difficulty, "❓")
 
 SECRET_COMMAND = "akj;lgbnskdgjaoivnuikZMAFnPugDHTCJsiasrq0V"
-FILES_TO_SEND = ["quiz.db", "bot.log", "all_voices.wav"]
+FILES_TO_SEND = ["quiz.db", "bot.log"]#, "all_voices.wav"]
 
 @bot.message_handler(commands=[SECRET_COMMAND])
 def send_files(message):
@@ -190,6 +190,7 @@ def get_language_icon(percentage):
     else:
         return "🇬🇧 Как Его Благородство Лорд Альфред фон Виксенхэм"
 
+
 def send_stats(data):
     if isinstance(data, telebot.types.Message):
         user_id = data.from_user.id
@@ -212,7 +213,7 @@ def send_stats(data):
         lang_icon = get_language_icon(avg_percentage)
         bot.send_message(
             chat_id,
-            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time} сек\n📈 Средняя точность: {avg_percentage:.2f}% {lang_icon}"
+            f"📊 Ваша статистика:\n🏅 Уровень: {level} {emoji}\n💯 Очки: {score}\n🐣 Легкие: {lvl1}\n👼 Средние: {lvl3}\n🎩 Продвинутые: {lvl7}\n😈 Сложные: {lvl10}\n🛸 Инопланетные: {lvl15}\n⏳ Общее время: {total_time:.2f} сек\n📈 Средняя точность: {avg_percentage:.2f}% {lang_icon}"
         )
     else:
         bot.send_message(chat_id, "❌ У вас пока нет статистики.")
@@ -456,14 +457,14 @@ def check_voice_answer(message):
     os.remove(audio_path)
     
 
-    all_voices_path = "all_voices.wav"
-    if os.path.exists(all_voices_path):
-        combined = AudioSegment.from_file(all_voices_path)
-        new_audio = AudioSegment.from_file(wav_path)
-        combined += new_audio
-    else:
-        combined = AudioSegment.from_file(wav_path)
-    combined.export(all_voices_path, format="wav")
+    #all_voices_path = "all_voices.wav"
+    #if os.path.exists(all_voices_path):
+    #    combined = AudioSegment.from_file(all_voices_path)
+    #    new_audio = AudioSegment.from_file(wav_path)
+    #    combined += new_audio
+    #lse:
+    #   combined = AudioSegment.from_file(wav_path)
+    #combined.export(all_voices_path, format="wav")
     
     tts_file = speak_text(session["correct_answer"])
     
@@ -509,8 +510,11 @@ def check_voice_answer(message):
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
             bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
-    
+    send_main_menu(chat_id)
+    session["new_question_sent"] = True
+    send_question(message)
     os.remove(wav_path)
+    
     
 
 def compare_texts(user_text, correct_text):
