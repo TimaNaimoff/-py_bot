@@ -378,55 +378,61 @@ def normalize_audio(audio_path):
         logging.error(f"[normalize_audio] Error normalizing {audio_path}: {e}")
         return audio_path
 
-def match_audio_length(user_audio, reference_audio):
-    try:
-        logging.debug(f"[match_audio_length] Matching {user_audio} and {reference_audio}")
-        user_sound = parselmouth.Sound(user_audio)
-        reference_sound = parselmouth.Sound(reference_audio)
-        
-        if user_sound is None or reference_sound is None:
-            logging.error("[match_audio_length] One or both audio files could not be loaded.")
-            return None, None
-        
-        min_duration = min(user_sound.get_total_duration(), reference_sound.get_total_duration())
-        user_sound = user_sound.extract_part(from_time=0, to_time=min_duration)
-        reference_sound = reference_sound.extract_part(from_time=0, to_time=min_duration)
-        
-        logging.debug(f"[match_audio_length] Trimmed to {min_duration} seconds")
-        return user_sound, reference_sound
-    except Exception as e:
-        logging.error(f"[match_audio_length] Error processing audio: {e}")
-        return None, None
+def analyze_formants(audio_path):
+    sound = parselmouth.Sound(audio_path)
+    formant = sound.to_formant_burg()
+    transitions = []
+    for t in np.linspace(0, sound.get_total_duration(), num=10):
+        f1 = formant.get_value_at_time(1, t)
+        f2 = formant.get_value_at_time(2, t)
+        if f1 and f2:
+            transitions.append((f1, f2))
+    smoothness = np.mean(np.diff([t[0] for t in transitions]))
+    return max(0, 100 - smoothness * 10)
 
-def analyze_speech(user_audio, reference_audio):
-    try:
-        logging.debug(f"[analyze_speech] Analyzing {user_audio} and {reference_audio}")
-        user_audio = remove_silence(user_audio)
-        reference_audio = remove_silence(reference_audio)
-        
-        user_audio = normalize_audio(user_audio)
-        reference_audio = normalize_audio(reference_audio)
-        
-        user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
-        if user_sound is None or reference_sound is None:
-            logging.error("[analyze_speech] Failed to process audio, returning default scores.")
-            return 0, 0, 0
-        
-        user_pitch = user_sound.to_pitch().selected_array['frequency']
-        ref_pitch = reference_sound.to_pitch().selected_array['frequency']
-        
-        if user_pitch.size == 0 or ref_pitch.size == 0:
-            logging.error(f"[analyze_speech] Empty pitch array: user={user_pitch.size}, ref={ref_pitch.size}")
-            return 0, 0, 0
-        
-        pitch_score = 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch))
-        jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10
-        shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10
-        
-        return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
-    except Exception as e:
-        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
-        return 0, 0, 0
+def analyze_speech_rate(audio_path):
+    sound = parselmouth.Sound(audio_path)
+    intensity = sound.to_intensity()
+    voiced_frames = np.sum(intensity.values > -30)
+    duration = sound.get_total_duration()
+    speech_rate = voiced_frames / duration
+    return min(100, max(0, (speech_rate - 4) * 10))
+
+def analyze_fluency(audio_path):
+    sound = parselmouth.Sound(audio_path)
+    intensity = sound.to_intensity()
+    pauses = 0
+    for i in range(1, len(intensity.values)):
+        if intensity.values[i] < -30 and intensity.values[i-1] > -30:
+            pauses += 1  
+    return max(0, 100 - pauses * 5)
+
+def analyze_prosody(user_audio, reference_audio):
+    user_sound = parselmouth.Sound(user_audio).to_pitch()
+    ref_sound = parselmouth.Sound(reference_audio).to_pitch()
+    user_contour = user_sound.selected_array['frequency']
+    ref_contour = ref_sound.selected_array['frequency']
+    if len(user_contour) == 0 or len(ref_contour) == 0:
+        return 0
+    correlation = np.corrcoef(user_contour, ref_contour)[0, 1]
+    return max(0, correlation * 100)
+
+def evaluate_speaking(user_audio, reference_audio):
+    pitch_score, jitter_score, shimmer_score = analyze_speech(user_audio, reference_audio)
+    formant_score = analyze_formants(user_audio)
+    rate_score = analyze_speech_rate(user_audio)
+    fluency_score = analyze_fluency(user_audio)
+    prosody_score = analyze_prosody(user_audio, reference_audio)
+    final_score = (
+        pitch_score * 0.1 +
+        jitter_score * 0.1 +
+        shimmer_score * 0.1 +
+        formant_score * 0.2 +  
+        rate_score * 0.2 +  
+        fluency_score * 0.2 +  
+        prosody_score * 0.1  
+    )
+    return round(final_score, 2)
 
 
 @bot.message_handler(content_types=['voice'])
@@ -443,7 +449,6 @@ def check_voice_answer(message):
         logging.warning(f"[check_voice_answer] Chat {chat_id}: Received voice but task is not speaking or reading. Ignoring.")
         return
 
-    
     file_id = message.voice.file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -455,61 +460,25 @@ def check_voice_answer(message):
     wav_path = f"voice_{chat_id}.wav"
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
+
+    # Удаление тишины и нормализация аудио
+    processed_wav = remove_silence(wav_path)
+    processed_wav = normalize_audio(processed_wav)
     
- 
-    
-    # Генерация эталонного аудио при 10 уровне
+    # Генерация эталонного аудио
     if session["difficulty"] == 10 and session.get("is_reading_task"):
         tts_file = "reference_tts.wav"
         tts = gTTS(session["question_text"], lang="en")
         tts.save(tts_file)
     else:
         tts_file = speak_text(session["correct_answer"])
+
+    # Анализ речи
+    final_score = evaluate_speaking(processed_wav, tts_file)
     
-    logging.info(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
-    try:
-        pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file or wav_path)
-    except Exception as e:
-        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
-    
-    recognizer = sr.Recognizer()
-    with sr.AudioFile(wav_path) as source:
-        try:
-            audio = recognizer.record(source)
-            user_transcription = recognizer.recognize_google(audio).lower()
-            logging.info(f"[check_voice_answer] Transcribed speech: {user_transcription}")
-            correct_transcription = session["correct_answer"].lower()
-            match_percentage = compare_texts(user_transcription, correct_transcription)
-            final_score = (match_percentage + pitch_score + jitter_score + shimmer_score) / 4
-            final_score = min(100, round(final_score * 2, 2))  
-            
-            base_points = session["difficulty"]
-            awarded_points = base_points + (final_score / 10)
-            awarded_points = round(awarded_points, 2)
-            
-            user_id = message.from_user.id
-            username = message.from_user.username or message.from_user.first_name
-            update_user_stats(user_id, username, session["difficulty"], awarded_points)
-            
-            with sqlite3.connect("quiz.db") as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT avg_percentage FROM leaderboard WHERE user_id = ?", (user_id,))
-                row = cursor.fetchone()
-                if row:
-                    prev_avg = row[0]
-                    new_avg = (prev_avg + final_score) / 2
-                    cursor.execute("UPDATE leaderboard SET avg_percentage = ? WHERE user_id = ?", (new_avg, user_id))
-                else:
-                    cursor.execute("INSERT INTO leaderboard (user_id, username, avg_percentage) VALUES (?, ?, ?)", (user_id, username, final_score))
-                conn.commit()
-            
-            lang_icon = get_language_icon(final_score)
-            bot.send_message(chat_id, f"🎯 Точность: {final_score}% {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
-        except sr.UnknownValueError:
-            logging.error(f"[check_voice_answer] Speech recognition failed.")
-            bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
-    
-    os.remove(wav_path)
+    bot.send_message(chat_id, f"🎯 Точность речи: {final_score}%")
+    os.remove(processed_wav)
+
     
     
 
