@@ -534,45 +534,8 @@ def get_hint(word):
     hint = word[0] + "$" * (middle_index - 1) + word[middle_index] + "$" * (len(word) - middle_index - 1)
     return hint
 
-def send_voice_quesiton(message):
-    chat_id = message.chat.id  
-    username = message.from_user.username or message.from_user.first_name
-    question_data = get_random_question()
-    
-    if question_data:
-        word, description, difficulty = question_data
-        is_audio_only = False
-        is_speaking_task = true
+
         
-        if difficulty in [1, 10] and random.randint(1, 3) == 1:
-            difficulty = 7 if difficulty == 1 else 15
-            is_audio_only = True
-        
-        emoji = get_difficulty_emoji(difficulty)
-        start_time = time.time()
-        
-        user_sessions[chat_id] = {
-            "correct_answer": word.lower(),
-            "difficulty": difficulty,
-            "start_time": start_time,
-            "question_text": description,
-            "is_speaking_task": is_speaking_task
-        }
-        
-        logging.info(f"[send_question] Chat {chat_id}: is_speaking_task={is_speaking_task}, is_audio_only={is_audio_only}")
-        
-        tts_file = speak_text(description)
-        
-        if tts_file and os.path.exists(tts_file):
-            with open(tts_file, "rb") as audio:
-                bot.send_audio(chat_id, audio)
-        
-   
-        bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji} \n*{description}*", parse_mode="Markdown")
-        
-        log_event(chat_id, username, f"получил вопрос: {description} (Ответ: {word})")
-    else:
-        bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
 @bot.message_handler(commands=['stats', 'global_rating', 'clean'])
 def handle_commands(message):
     if message.text == '/stats':
@@ -580,9 +543,7 @@ def handle_commands(message):
     elif message.text == '/global_rating':
         leaderboard(message)
     elif message.text == '/clean':
-        clean(message)
-    elif message.text == '/tarnum':
-        send_voice_question(message)	
+        clean(message)	
 
 
 
