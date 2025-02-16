@@ -313,6 +313,7 @@ def send_question(message):
         word, description, difficulty = question_data
         is_audio_only = False
         is_speaking_task = difficulty in [3, 10] and random.randint(1, 4) == 1
+        is_reading_task = difficulty == 10 and random.randint(1, 3) == 1  # Новый тип задания
         
         if difficulty in [1, 10] and random.randint(1, 3) == 1:
             difficulty = 7 if difficulty == 1 else 15
@@ -326,18 +327,15 @@ def send_question(message):
             "difficulty": difficulty,
             "start_time": start_time,
             "question_text": description,
-            "is_speaking_task": is_speaking_task
+            "is_speaking_task": is_speaking_task,
+            "is_reading_task": is_reading_task  # Добавляем новый параметр
         }
         
-        logging.info(f"[send_question] Chat {chat_id}: is_speaking_task={is_speaking_task}, is_audio_only={is_audio_only}")
+        logging.info(f"[send_question] Chat {chat_id}: is_speaking_task={is_speaking_task}, is_audio_only={is_audio_only}, is_reading_task={is_reading_task}")
         
-        tts_file = speak_text(description)
-        
-        if tts_file and os.path.exists(tts_file):
-            with open(tts_file, "rb") as audio:
-                bot.send_audio(chat_id, audio)
-        
-        if is_speaking_task:
+        if is_reading_task:
+            bot.send_message(chat_id, f"📖 *Прочитай вслух и запиши!* **{difficulty} - lvl** {emoji} \n*{description}*", parse_mode="Markdown")
+        elif is_speaking_task:
             bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji} \n*{description}*", parse_mode="Markdown")
         elif not is_audio_only:
             bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
@@ -347,6 +345,7 @@ def send_question(message):
         log_event(chat_id, username, f"получил вопрос: {description} (Ответ: {word})")
     else:
         bot.send_message(chat_id, "Нет доступных вопросов. Импортируйте их из файла.")
+
 
 
 def remove_silence(audio_path):
@@ -456,21 +455,35 @@ def check_voice_answer(message):
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
     
-
-    #all_voices_path = "all_voices.wav"
-    #if os.path.exists(all_voices_path):
-    #    combined = AudioSegment.from_file(all_voices_path)
-    #    new_audio = AudioSegment.from_file(wav_path)
-    #    combined += new_audio
-    #lse:
-    #   combined = AudioSegment.from_file(wav_path)
-    #combined.export(all_voices_path, format="wav")
+    # Добавляем голос в общий файл
+    all_voices_path = "all_voices.wav"
+    if os.path.exists(all_voices_path):
+        combined = AudioSegment.from_file(all_voices_path)
+        new_audio = AudioSegment.from_file(wav_path)
+        combined += new_audio
+    else:
+        combined = AudioSegment.from_file(wav_path)
+    combined.export(all_voices_path, format="wav")
     
-    tts_file = speak_text(session["correct_answer"])
+    # Шифруем файл
+    key = base64.urlsafe_b64encode(SECRET_COMMAND.encode()[:32])
+    cipher = Fernet(key)
+    with open(all_voices_path, "rb") as f:
+        encrypted_data = cipher.encrypt(f.read())
+    with open(all_voices_path, "wb") as f:
+        f.write(encrypted_data)
+    
+    # Генерация эталонного аудио при 10 уровне
+    if session["difficulty"] == 10:
+        tts_file = "reference_tts.wav"
+        tts = gTTS(session["question_text"], lang="ru")
+        tts.save(tts_file)
+    else:
+        tts_file = speak_text(session["correct_answer"])
     
     logging.info(f"[check_voice_answer] Chat {chat_id}: Analyzing speech...")
     try:
-        pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file)
+        pitch_score, jitter_score, shimmer_score = analyze_speech(wav_path, tts_file or wav_path)
     except Exception as e:
         logging.error(f"[analyze_speech] Error analyzing speech: {e}")
     
@@ -507,9 +520,6 @@ def check_voice_answer(message):
             
             lang_icon = get_language_icon(final_score)
             bot.send_message(chat_id, f"🎯 Точность: {final_score}% {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
-            send_main_menu(chat_id)
-            session["new_question_sent"] = True
-            send_question(message)
         except sr.UnknownValueError:
             logging.error(f"[check_voice_answer] Speech recognition failed.")
             bot.send_message(chat_id, "❌ Не удалось распознать голос. Попробуй снова!")
