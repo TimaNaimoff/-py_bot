@@ -191,7 +191,7 @@ def get_language_icon(percentage):
         return "🇬🇧 Как Его Благородство Лорд Альфред фон Виксенхэм"
 
 
-def send_stats(data):f
+def send_stats(data):
     if isinstance(data, telebot.types.Message):
         user_id = data.from_user.id
         chat_id = data.chat.id
