@@ -459,7 +459,7 @@ def check_voice_answer(message):
  
     
     # Генерация эталонного аудио при 10 уровне
-    if session["difficulty"] == 10 and not session.get("is_speaking_task"):
+    if session["difficulty"] == 10 and session.get("is_reading_task"):
         tts_file = "reference_tts.wav"
         tts = gTTS(session["question_text"], lang="en")
         tts.save(tts_file)
