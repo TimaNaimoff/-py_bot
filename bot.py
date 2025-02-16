@@ -581,7 +581,7 @@ def handle_commands(message):
         leaderboard(message)
     elif message.text == '/clean':
         clean(message)
-    elif message.text == '/tarnum'
+    elif message.text == '/tarnum':
         send_voice_question(message)	
 
 
