@@ -17,7 +17,8 @@ import speech_recognition as sr
 from pydub import AudioSegment, silence
 import numpy as np
 from scipy.interpolate import interp1d
-
+from scipy.spatial.distance import euclidean
+from fastdtw import fastdtw
 
 app = Flask(__name__)
 
