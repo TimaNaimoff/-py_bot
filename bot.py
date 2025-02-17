@@ -373,13 +373,14 @@ def remove_silence(audio_path):
     try:
         logging.debug(f"[remove_silence] Processing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40, min_silence_len=200)
+        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-35, min_silence_len=150)
+
         if not non_silent_chunks:
             return audio_path
-        
+
         start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
-        trimmed_sound = sound[max(0, start_trim - 100):min(len(sound), end_trim + 100)]
-        
+        trimmed_sound = sound[max(0, start_trim - 50):min(len(sound), end_trim + 50)]
+
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
         logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
@@ -388,12 +389,16 @@ def remove_silence(audio_path):
         logging.error(f"[remove_silence] Error processing {audio_path}: {e}")
         return audio_path
 
-
 def normalize_audio(audio_path):
     try:
         logging.debug(f"[normalize_audio] Normalizing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-        normalized_sound = sound.apply_gain(-sound.max_dBFS)
+
+        # Рассчитываем, насколько нужно поднять уровень громкости
+        target_dBFS = -20.0  # Оптимальный уровень громкости  
+        change_in_dBFS = target_dBFS - sound.dBFS
+        normalized_sound = sound.apply_gain(change_in_dBFS)
+
         normalized_path = "normalized_" + audio_path
         normalized_sound.export(normalized_path, format="wav")
         logging.debug(f"[normalize_audio] Normalized audio saved to {normalized_path}")
@@ -401,39 +406,44 @@ def normalize_audio(audio_path):
     except Exception as e:
         logging.error(f"[normalize_audio] Error normalizing {audio_path}: {e}")
         return audio_path
+
 def analyze_speech(user_audio, reference_audio):
     try:
         user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
         if user_sound is None or reference_sound is None:
             return 0, 0, 0
-        
+
         user_pitch = user_sound.to_pitch().selected_array['frequency']
         ref_pitch = reference_sound.to_pitch().selected_array['frequency']
-        
+
         user_pitch = user_pitch[~np.isnan(user_pitch)]
         ref_pitch = ref_pitch[~np.isnan(ref_pitch)]
-        
-        if len(user_pitch) == 0 or len(ref_pitch) == 0:
+
+        if len(user_pitch) < 5 or len(ref_pitch) < 5:
             return 0, 0, 0
-        
+
         max_length = max(len(user_pitch), len(ref_pitch))
-        
+
         def interpolate_contour(contour, target_length):
             x_old = np.linspace(0, 1, len(contour))
             x_new = np.linspace(0, 1, target_length)
             f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
             return f(x_new)
-        
+
         user_pitch = interpolate_contour(user_pitch, max_length)
         ref_pitch = interpolate_contour(ref_pitch, max_length)
-        
-        pitch_score = max(0, 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch)))
-        jitter_score = max(0, 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 20)
-        shimmer_score = max(0, 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 30)
-        
+
+        pitch_diff = np.abs(user_pitch - ref_pitch)
+        pitch_score = max(0, 100 - np.mean(pitch_diff) * 2)
+
+        jitter_score = max(0, 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 15)
+        shimmer_score = max(0, 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 20)
+
         return pitch_score, jitter_score, shimmer_score
-    except:
+    except Exception as e:
+        logging.error(f"[analyze_speech] Error: {e}")
         return 0, 0, 0
+
 def analyze_formants(audio_path):
     sound = parselmouth.Sound(audio_path)
     formant = sound.to_formant_burg()
@@ -447,12 +457,16 @@ def analyze_formants(audio_path):
     return max(0, 100 - smoothness * 10)
 
 def analyze_speech_rate(audio_path):
-    sound = parselmouth.Sound(audio_path)
-    intensity = sound.to_intensity()
-    voiced_frames = np.sum(intensity.values > -30)
-    duration = sound.get_total_duration()
-    speech_rate = voiced_frames / duration
-    return min(100, max(0, (speech_rate - 4) * 10))
+    try:
+        sound = parselmouth.Sound(audio_path)
+        intensity = sound.to_intensity()
+        voiced_frames = np.sum(intensity.values > -30)
+        duration = sound.get_total_duration()
+        speech_rate = voiced_frames / duration
+        return np.clip((speech_rate - 3) * 20, 0, 100)
+    except Exception as e:
+        logging.error(f"[analyze_speech_rate] Error: {e}")
+        return 0
 
 def analyze_fluency(audio_path):
     sound = parselmouth.Sound(audio_path)
