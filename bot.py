@@ -374,13 +374,19 @@ def remove_silence(audio_path):
     try:
         logging.debug(f"[remove_silence] Processing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40, min_silence_len=200)
+
+        # Более жесткий порог тишины
+        silence_thresh = sound.dBFS - 25  
+        non_silent_chunks = silence.detect_nonsilent(
+            sound, silence_thresh=silence_thresh, min_silence_len=150
+        )
+
         if not non_silent_chunks:
-            return audio_path
-        
+            return audio_path  # Если ничего не найдено, не обрезаем
+
         start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
-        trimmed_sound = sound[max(0, start_trim - 100):min(len(sound), end_trim + 100)]
-        
+        trimmed_sound = sound[max(0, start_trim - 50): min(len(sound), end_trim + 50)]
+
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
         logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
@@ -388,6 +394,28 @@ def remove_silence(audio_path):
     except Exception as e:
         logging.error(f"[remove_silence] Error processing {audio_path}: {e}")
         return audio_path
+
+
+def normalize_audio(audio_path):
+    try:
+        logging.debug(f"[normalize_audio] Normalizing {audio_path}")
+        sound = AudioSegment.from_file(audio_path)
+
+        # 1. Нормализация громкости
+        gain = -sound.max_dBFS
+        normalized_sound = sound.apply_gain(gain)
+
+        # 2. Фильтр низких частот (отсекание шума)
+        normalized_sound = normalized_sound.low_pass_filter(3000)
+
+        normalized_path = "normalized_" + audio_path
+        normalized_sound.export(normalized_path, format="wav")
+        logging.debug(f"[normalize_audio] Normalized audio saved to {normalized_path}")
+        return normalized_path
+    except Exception as e:
+        logging.error(f"[normalize_audio] Error normalizing {audio_path}: {e}")
+        return audio_path
+
 
 
 def normalize_audio(audio_path):
@@ -438,19 +466,53 @@ def analyze_speech(user_audio, reference_audio):
     except Exception as e:
         logging.error(f"[analyze_speech] Error: {e}")
         return 0, 0, 0
+def analyze_pitch(user_audio, reference_audio):
+    try:
+        user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
+
+        if user_sound is None or reference_sound is None:
+            return 0
+
+        user_pitch = user_sound.to_pitch().selected_array['frequency']
+        ref_pitch = reference_sound.to_pitch().selected_array['frequency']
+
+        user_pitch = user_pitch[~np.isnan(user_pitch)]
+        ref_pitch = ref_pitch[~np.isnan(ref_pitch)]
+
+        if len(user_pitch) == 0 or len(ref_pitch) == 0:
+            return 0
+
+        # Нормализация частот
+        user_pitch = (user_pitch - np.mean(user_pitch)) / np.std(user_pitch)
+        ref_pitch = (ref_pitch - np.mean(ref_pitch)) / np.std(ref_pitch)
+
+        # DTW с масштабированием
+        dist, _, _, _ = dtw(user_pitch, ref_pitch, dist=lambda x, y: abs(x - y))
+        pitch_score = max(0, 100 - dist * 10)
+        
+        return pitch_score
+    except Exception as e:
+        logging.error(f"[analyze_pitch] Error: {e}")
+        return 0
 
 
 def analyze_formants(audio_path):
-    sound = parselmouth.Sound(audio_path)
-    formant = sound.to_formant_burg()
-    transitions = []
-    for t in np.linspace(0, sound.get_total_duration(), num=10):
-        f1 = formant.get_value_at_time(1, t)
-        f2 = formant.get_value_at_time(2, t)
-        if f1 and f2:
-            transitions.append((f1, f2))
-    smoothness = np.mean(np.diff([t[0] for t in transitions]))
-    return max(0, 100 - smoothness * 10)
+    try:
+        sound = parselmouth.Sound(audio_path)
+        formant = sound.to_formant_burg()
+        transitions = []
+        for t in np.linspace(0, sound.get_total_duration(), num=10):
+            f1 = formant.get_value_at_time(1, t)
+            f2 = formant.get_value_at_time(2, t)
+            if f1 and f2:
+                transitions.append((f1, f2))
+
+        smoothness = np.mean(np.diff([t[0] for t in transitions]))
+        return max(0, 100 - smoothness * 10)
+    except Exception as e:
+        logging.error(f"[analyze_formants] Error: {e}")
+        return 0
+
 
 def analyze_speech_rate(audio_path):
     try:
@@ -480,6 +542,28 @@ def analyze_fluency(audio_path):
     except Exception as e:
         logging.error(f"[analyze_fluency] Error: {e}")
         return 0
+def analyze_intensity(user_audio, reference_audio):
+    try:
+        user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
+
+        if user_sound is None or reference_sound is None:
+            return 0
+
+        user_intensity = user_sound.to_intensity().values
+        ref_intensity = reference_sound.to_intensity().values
+
+        user_intensity = user_intensity[~np.isnan(user_intensity)]
+        ref_intensity = ref_intensity[~np.isnan(ref_intensity)]
+
+        if len(user_intensity) < 5 or len(ref_intensity) < 5:
+            return 0
+
+        # Корреляция громкости (учет ритма)
+        correlation = np.corrcoef(user_intensity, ref_intensity)[0, 1]
+        return max(0, min(100, correlation * 100))
+    except Exception as e:
+        logging.error(f"[analyze_intensity] Error: {e}")
+        return 0
 
 
 def analyze_prosody(user_audio, reference_audio):
@@ -504,23 +588,19 @@ def analyze_prosody(user_audio, reference_audio):
         logging.error(f"[analyze_prosody] Error: {e}")
         return 0
 
-
 def evaluate_speaking(user_audio, reference_audio):
-    pitch_score, jitter_score, shimmer_score = analyze_speech(user_audio, reference_audio)
-    prosody_score = analyze_prosody(user_audio, reference_audio)
-    fluency_score = analyze_fluency(user_audio)
-    speech_rate_score = analyze_speech_rate(user_audio)
+    pitch_score = analyze_pitch(user_audio, reference_audio)
+    intensity_score = analyze_intensity(user_audio, reference_audio)
+    formant_score = analyze_formants(user_audio)
 
     final_score = (
-        pitch_score * 0.2 +
-        jitter_score * 0.15 +
-        shimmer_score * 0.15 +
-        prosody_score * 0.2 +
-        fluency_score * 0.15 +
-        speech_rate_score * 0.15
+        pitch_score * 0.3 +
+        intensity_score * 0.3 +
+        formant_score * 0.4
     )
 
     return round(final_score, 2)
+
 
 
 @bot.message_handler(content_types=['voice'])
