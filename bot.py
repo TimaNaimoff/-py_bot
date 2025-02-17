@@ -374,14 +374,13 @@ def remove_silence(audio_path):
     try:
         logging.debug(f"[remove_silence] Processing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-35, min_silence_len=150)
-
+        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40, min_silence_len=200)
         if not non_silent_chunks:
             return audio_path
-
+        
         start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
-        trimmed_sound = sound[max(0, start_trim - 50):min(len(sound), end_trim + 50)]
-
+        trimmed_sound = sound[max(0, start_trim - 100):min(len(sound), end_trim + 100)]
+        
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
         logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
@@ -390,39 +389,36 @@ def remove_silence(audio_path):
         logging.error(f"[remove_silence] Error processing {audio_path}: {e}")
         return audio_path
 
+
 def normalize_audio(audio_path):
     try:
         logging.debug(f"[normalize_audio] Normalizing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-
-        # Рассчитываем, насколько нужно поднять уровень громкости
-        target_dBFS = -20.0  # Оптимальный уровень громкости  
-        change_in_dBFS = target_dBFS - sound.dBFS
+        change_in_dBFS = -sound.dBFS
         normalized_sound = sound.apply_gain(change_in_dBFS)
-
         normalized_path = "normalized_" + audio_path
         normalized_sound.export(normalized_path, format="wav")
         logging.debug(f"[normalize_audio] Normalized audio saved to {normalized_path}")
         return normalized_path
     except Exception as e:
         logging.error(f"[normalize_audio] Error normalizing {audio_path}: {e}")
-        return audio_path
+        return audio_pathh
 
 def analyze_speech(user_audio, reference_audio):
     try:
         user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
         if user_sound is None or reference_sound is None:
             return 0, 0, 0
-
+        
         user_pitch = user_sound.to_pitch().selected_array['frequency']
         ref_pitch = reference_sound.to_pitch().selected_array['frequency']
-
+        
         user_pitch = user_pitch[~np.isnan(user_pitch)]
         ref_pitch = ref_pitch[~np.isnan(ref_pitch)]
-
+        
         if len(user_pitch) < 5 or len(ref_pitch) < 5:
             return 0, 0, 0
-
+        
         max_length = max(len(user_pitch), len(ref_pitch))
 
         def interpolate_contour(contour, target_length):
@@ -434,16 +430,15 @@ def analyze_speech(user_audio, reference_audio):
         user_pitch = interpolate_contour(user_pitch, max_length)
         ref_pitch = interpolate_contour(ref_pitch, max_length)
 
-        pitch_diff = np.abs(user_pitch - ref_pitch)
-        pitch_score = max(0, 100 - np.mean(pitch_diff) * 2)
-
-        jitter_score = max(0, 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 15)
-        shimmer_score = max(0, 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 20)
+        pitch_score = max(0, 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch)))
+        jitter_score = max(0, 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10)
+        shimmer_score = max(0, 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 15)
 
         return pitch_score, jitter_score, shimmer_score
     except Exception as e:
         logging.error(f"[analyze_speech] Error: {e}")
         return 0, 0, 0
+
 
 def analyze_formants(audio_path):
     sound = parselmouth.Sound(audio_path)
@@ -463,20 +458,29 @@ def analyze_speech_rate(audio_path):
         intensity = sound.to_intensity()
         voiced_frames = np.sum(intensity.values > -30)
         duration = sound.get_total_duration()
+
         speech_rate = voiced_frames / duration
-        return np.clip((speech_rate - 3) * 20, 0, 100)
+        return min(100, max(0, (speech_rate - 4) * 10))
     except Exception as e:
         logging.error(f"[analyze_speech_rate] Error: {e}")
         return 0
 
 def analyze_fluency(audio_path):
-    sound = parselmouth.Sound(audio_path)
-    intensity = sound.to_intensity()
-    pauses = 0
-    for i in range(1, len(intensity.values)):
-        if intensity.values[i] < -30 and intensity.values[i-1] > -30:
-            pauses += 1  
-    return max(0, 100 - pauses * 5)
+    try:
+        sound = parselmouth.Sound(audio_path)
+        intensity = sound.to_intensity()
+        pauses = 0
+
+        for i in range(1, len(intensity.values) - 1):
+            if intensity.values[i] < -30 < intensity.values[i - 1]:
+                pauses += 1
+
+        fluency_score = max(0, 100 - pauses * 2)
+        return fluency_score
+    except Exception as e:
+        logging.error(f"[analyze_fluency] Error: {e}")
+        return 0
+
 
 def analyze_prosody(user_audio, reference_audio):
     try:
@@ -492,19 +496,10 @@ def analyze_prosody(user_audio, reference_audio):
         if len(user_contour) < 5 or len(ref_contour) < 5:
             return 0
 
-        max_length = max(len(user_contour), len(ref_contour))
+        distance, _ = fastdtw(user_contour, ref_contour, dist=euclidean)
+        prosody_score = max(0, 100 - distance * 0.05)
 
-        def interpolate_contour(contour, target_length):
-            x_old = np.linspace(0, 1, len(contour))
-            x_new = np.linspace(0, 1, target_length)
-            f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
-            return f(x_new)
-
-        user_contour = interpolate_contour(user_contour, max_length)
-        ref_contour = interpolate_contour(ref_contour, max_length)
-
-        correlation = np.corrcoef(user_contour, ref_contour)[0, 1] if max_length > 5 else 0
-        return max(0, min(100, correlation * 100))
+        return prosody_score
     except Exception as e:
         logging.error(f"[analyze_prosody] Error: {e}")
         return 0
@@ -515,16 +510,16 @@ def evaluate_speaking(user_audio, reference_audio):
     prosody_score = analyze_prosody(user_audio, reference_audio)
     fluency_score = analyze_fluency(user_audio)
     speech_rate_score = analyze_speech_rate(user_audio)
-    
+
     final_score = (
-        pitch_score * 0.2 + 
-        jitter_score * 0.2 + 
-        shimmer_score * 0.2 + 
-        prosody_score * 0.2 + 
-        fluency_score * 0.1 + 
-        speech_rate_score * 0.1
+        pitch_score * 0.2 +
+        jitter_score * 0.15 +
+        shimmer_score * 0.15 +
+        prosody_score * 0.2 +
+        fluency_score * 0.15 +
+        speech_rate_score * 0.15
     )
-    
+
     return round(final_score, 2)
 
 
