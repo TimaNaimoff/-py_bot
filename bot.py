@@ -356,22 +356,18 @@ def send_question(message):
 
 def match_audio_length(user_audio, reference_audio):
     try:
-        logging.debug(f"[match_audio_length] Matching {user_audio} and {reference_audio}")
         user_sound = parselmouth.Sound(user_audio)
         reference_sound = parselmouth.Sound(reference_audio)
         
         if user_sound is None or reference_sound is None:
-            logging.error("[match_audio_length] One or both audio files could not be loaded.")
             return None, None
         
         min_duration = min(user_sound.get_total_duration(), reference_sound.get_total_duration())
         user_sound = user_sound.extract_part(from_time=0, to_time=min_duration)
         reference_sound = reference_sound.extract_part(from_time=0, to_time=min_duration)
         
-        logging.debug(f"[match_audio_length] Trimmed to {min_duration} seconds")
         return user_sound, reference_sound
-    except Exception as e:
-        logging.error(f"[match_audio_length] Error processing audio: {e}")
+    except:
         return None, None
 def remove_silence(audio_path):
     try:
@@ -404,32 +400,36 @@ def normalize_audio(audio_path):
         return audio_path
 def analyze_speech(user_audio, reference_audio):
     try:
-        logging.debug(f"[analyze_speech] Analyzing {user_audio} and {reference_audio}")
-        user_audio = remove_silence(user_audio)
-        reference_audio = remove_silence(reference_audio)
-        
-        user_audio = normalize_audio(user_audio)
-        reference_audio = normalize_audio(reference_audio)
-        
         user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
         if user_sound is None or reference_sound is None:
-            logging.error("[analyze_speech] Failed to process audio, returning default scores.")
             return 0, 0, 0
         
         user_pitch = user_sound.to_pitch().selected_array['frequency']
         ref_pitch = reference_sound.to_pitch().selected_array['frequency']
         
-        if user_pitch.size == 0 or ref_pitch.size == 0:
-            logging.error(f"[analyze_speech] Empty pitch array: user={user_pitch.size}, ref={ref_pitch.size}")
+        user_pitch = user_pitch[~np.isnan(user_pitch)]
+        ref_pitch = ref_pitch[~np.isnan(ref_pitch)]
+        
+        if len(user_pitch) == 0 or len(ref_pitch) == 0:
             return 0, 0, 0
         
-        pitch_score = 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch))
-        jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10
-        shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10
+        max_length = max(len(user_pitch), len(ref_pitch))
         
-        return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
-    except Exception as e:
-        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
+        def interpolate_contour(contour, target_length):
+            x_old = np.linspace(0, 1, len(contour))
+            x_new = np.linspace(0, 1, target_length)
+            f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
+            return f(x_new)
+        
+        user_pitch = interpolate_contour(user_pitch, max_length)
+        ref_pitch = interpolate_contour(ref_pitch, max_length)
+        
+        pitch_score = max(0, 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch)))
+        jitter_score = max(0, 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 20)
+        shimmer_score = max(0, 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 30)
+        
+        return pitch_score, jitter_score, shimmer_score
+    except:
         return 0, 0, 0
 def analyze_formants(audio_path):
     sound = parselmouth.Sound(audio_path)
@@ -491,20 +491,9 @@ def analyze_prosody(user_audio, reference_audio):
 
 def evaluate_speaking(user_audio, reference_audio):
     pitch_score, jitter_score, shimmer_score = analyze_speech(user_audio, reference_audio)
-    formant_score = analyze_formants(user_audio)
-    rate_score = analyze_speech_rate(user_audio)
-    fluency_score = analyze_fluency(user_audio)
-    prosody_score = analyze_prosody(user_audio, reference_audio)
-    final_score = (
-        pitch_score * 0.1 +
-        jitter_score * 0.1 +
-        shimmer_score * 0.1 +
-        formant_score * 0.2 +  
-        rate_score * 0.2 +  
-        fluency_score * 0.2 +  
-        prosody_score * 0.1  
-    )
+    final_score = (pitch_score * 0.2 + jitter_score * 0.3 + shimmer_score * 0.5)
     return round(final_score, 2)
+
 
 
 @bot.message_handler(content_types=['voice'])
