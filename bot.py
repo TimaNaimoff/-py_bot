@@ -486,7 +486,7 @@ def analyze_fluency(audio_path):
         return 0
 
 
-ddef analyze_prosody(user_audio, reference_audio):
+def analyze_prosody(user_audio, reference_audio):
     try:
         user_sound = parselmouth.Sound(user_audio).to_pitch()
         ref_sound = parselmouth.Sound(reference_audio).to_pitch()
