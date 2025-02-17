@@ -313,7 +313,6 @@ def send_question(message):
         word, description, difficulty = question_data
         is_audio_only = False
         is_speaking_task = difficulty in [3, 10] and random.randint(1, 4) == 1
-        is_reading_task = difficulty == 10 and random.randint(1, 3) == 1  # Новый тип задания
         
         if difficulty in [1, 10] and random.randint(1, 3) == 1:
             difficulty = 7 if difficulty == 1 else 15
@@ -328,14 +327,18 @@ def send_question(message):
             "start_time": start_time,
             "question_text": description,
             "is_speaking_task": is_speaking_task,
-            "is_reading_task": is_reading_task  # Добавляем новый параметр
+            "is_reading_task": difficulty == 10 
         }
         
-        logging.info(f"[send_question] Chat {chat_id}: is_speaking_task={is_speaking_task}, is_audio_only={is_audio_only}, is_reading_task={is_reading_task}")
+        logging.info(f"[send_question] Chat {chat_id}: is_speaking_task={is_speaking_task}, is_audio_only={is_audio_only}")
         
-        if is_reading_task:
-            bot.send_message(chat_id, f"📖 *Прочитай вслух и запиши!* **{difficulty} - lvl** {emoji} \n*{description}*", parse_mode="Markdown")
-        elif is_speaking_task:
+        tts_file = speak_text(description)
+        
+        if tts_file and os.path.exists(tts_file):
+            with open(tts_file, "rb") as audio:
+                bot.send_audio(chat_id, audio)
+        
+        if is_speaking_task:
             bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji} \n*{description}*", parse_mode="Markdown")
         elif not is_audio_only:
             bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
@@ -445,7 +448,7 @@ def check_voice_answer(message):
         logging.warning(f"[check_voice_answer] Chat {chat_id}: No active session.")
         return
     
-    if not session.get("is_speaking_task") or not session.get("is_reading_task"):
+    if not session.get("is_speaking_task") and not session.get("is_reading_task"):
         logging.warning(f"[check_voice_answer] Chat {chat_id}: Received voice but task is not speaking or reading. Ignoring.")
         return
 
@@ -460,25 +463,22 @@ def check_voice_answer(message):
     wav_path = f"voice_{chat_id}.wav"
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
-
-    # Удаление тишины и нормализация аудио
-    processed_wav = remove_silence(wav_path)
-    processed_wav = normalize_audio(processed_wav)
     
-    # Генерация эталонного аудио
-    if session["difficulty"] == 10 and session.get("is_reading_task"):
+    if session.get("is_reading_task") and session["difficulty"] == 10:
         tts_file = "reference_tts.wav"
         tts = gTTS(session["question_text"], lang="en")
         tts.save(tts_file)
     else:
         tts_file = speak_text(session["correct_answer"])
-
-    # Анализ речи
-    final_score = evaluate_speaking(processed_wav, tts_file)
+    
+    final_score = evaluate_speaking(wav_path, tts_file)
     
     bot.send_message(chat_id, f"🎯 Точность речи: {final_score}%")
-    os.remove(processed_wav)
-
+    
+    if session.get("is_speaking_task"):
+        bot.send_audio(chat_id, open(wav_path, "rb"))
+    
+    os.remove(wav_path)
     
     
 
