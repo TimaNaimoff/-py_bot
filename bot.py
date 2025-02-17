@@ -454,7 +454,7 @@ def check_voice_answer(message):
     if not session.get("is_speaking_task") and not session.get("is_reading_task"):
         logging.warning(f"[check_voice_answer] Chat {chat_id}: Received voice but task is not speaking or reading. Ignoring.")
         return
-
+    
     file_id = message.voice.file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -462,26 +462,38 @@ def check_voice_answer(message):
     audio_path = f"voice_{chat_id}.ogg"
     with open(audio_path, "wb") as f:
         f.write(downloaded_file)
+    logging.info(f"[check_voice_answer] Chat {chat_id}: Audio file saved as {audio_path}")
     
     wav_path = f"voice_{chat_id}.wav"
     AudioSegment.from_file(audio_path).export(wav_path, format="wav")
     os.remove(audio_path)
+    logging.info(f"[check_voice_answer] Chat {chat_id}: Converted audio to WAV {wav_path}")
     
-    if session.get("is_reading_task") and session["difficulty"] == 10:
-        tts_file = "reference_tts.wav"
-        tts = gTTS(session["question_text"], lang="en")
-        tts.save(tts_file)
-    else:
-        tts_file = speak_text(session["correct_answer"])
+    try:
+        if session.get("is_reading_task"):
+            tts_file = "reference_tts.wav"
+            tts = gTTS(session["question_text"], lang="en")
+            tts.save(tts_file)
+        else:
+            tts_file = speak_text(session["correct_answer"])
+        
+        logging.info(f"[check_voice_answer] Chat {chat_id}: TTS file generated {tts_file}")
+        
+        final_score = evaluate_speaking(wav_path, tts_file)
+        logging.info(f"[check_voice_answer] Chat {chat_id}: Evaluation completed with score {final_score}")
+        
+        bot.send_message(chat_id, f"🎯 Точность речи: {final_score}%")
+        
+        if session.get("is_speaking_task"):
+            bot.send_audio(chat_id, open(wav_path, "rb"))
+        
+    except Exception as e:
+        logging.error(f"[check_voice_answer] Chat {chat_id}: Error processing voice input - {e}")
     
-    final_score = evaluate_speaking(wav_path, tts_file)
-    
-    bot.send_message(chat_id, f"🎯 Точность речи: {final_score}%")
-    
-    if session.get("is_speaking_task"):
-        bot.send_audio(chat_id, open(wav_path, "rb"))
-    
-    os.remove(wav_path)
+    finally:
+        os.remove(wav_path)
+        logging.info(f"[check_voice_answer] Chat {chat_id}: Removed temporary file {wav_path}")
+
     
     
 
