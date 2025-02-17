@@ -373,13 +373,17 @@ def remove_silence(audio_path):
     try:
         logging.debug(f"[remove_silence] Processing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-50, min_silence_len=150)
+        sound = sound.low_pass_filter(3000)  # Фильтрация шума
+        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40, min_silence_len=100)
+        
         if not non_silent_chunks:
             return audio_path
+        
         start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
         trimmed_sound = sound[start_trim:end_trim]
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
+        
         logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
         return trimmed_path
     except Exception as e:
@@ -467,33 +471,41 @@ def analyze_prosody(user_audio, reference_audio):
     user_contour = user_sound.selected_array['frequency']
     ref_contour = ref_sound.selected_array['frequency']
 
-    # Убираем NaN значения
     user_contour = user_contour[~np.isnan(user_contour)]
     ref_contour = ref_contour[~np.isnan(ref_contour)]
 
     if len(user_contour) == 0 or len(ref_contour) == 0:
-        return 0  # Если массив пустой, возвращаем 0
+        return 0
 
-    # Делаем массивы одинаковой длины с помощью интерполяции
     max_length = max(len(user_contour), len(ref_contour))
-
+    
     def interpolate_contour(contour, target_length):
         x_old = np.linspace(0, 1, len(contour))
         x_new = np.linspace(0, 1, target_length)
         f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
         return f(x_new)
-
+    
     user_contour = interpolate_contour(user_contour, max_length)
     ref_contour = interpolate_contour(ref_contour, max_length)
-
+    
     correlation = np.corrcoef(user_contour, ref_contour)[0, 1] if max_length > 1 else 0
-    return max(0, correlation * 100)
+    prosody_score = max(0, correlation * 100)
+    
+    return prosody_score
 
 def evaluate_speaking(user_audio, reference_audio):
     pitch_score, jitter_score, shimmer_score = analyze_speech(user_audio, reference_audio)
-    final_score = (pitch_score * 0.2 + jitter_score * 0.3 + shimmer_score * 0.5)
+    prosody_score = analyze_prosody(user_audio, reference_audio)
+    formant_score = analyze_formants(user_audio)
+    fluency_score = analyze_fluency(user_audio)
+    speech_rate_score = analyze_speech_rate(user_audio)
+    
+    final_score = (
+        pitch_score * 0.15 + jitter_score * 0.15 + shimmer_score * 0.2 +
+        prosody_score * 0.2 + formant_score * 0.15 + fluency_score * 0.1 + speech_rate_score * 0.05
+    )
+    
     return round(final_score, 2)
-
 
 
 @bot.message_handler(content_types=['voice'])
