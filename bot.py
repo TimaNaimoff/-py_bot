@@ -16,6 +16,7 @@ import parselmouth
 import speech_recognition as sr
 from pydub import AudioSegment, silence
 import numpy as np
+from scipy.interpolate import interp1d
 
 
 app = Flask(__name__)
@@ -462,11 +463,30 @@ def analyze_fluency(audio_path):
 def analyze_prosody(user_audio, reference_audio):
     user_sound = parselmouth.Sound(user_audio).to_pitch()
     ref_sound = parselmouth.Sound(reference_audio).to_pitch()
+
     user_contour = user_sound.selected_array['frequency']
     ref_contour = ref_sound.selected_array['frequency']
+
+    # Убираем NaN значения
+    user_contour = user_contour[~np.isnan(user_contour)]
+    ref_contour = ref_contour[~np.isnan(ref_contour)]
+
     if len(user_contour) == 0 or len(ref_contour) == 0:
-        return 0
-    correlation = np.corrcoef(user_contour, ref_contour)[0, 1]
+        return 0  # Если массив пустой, возвращаем 0
+
+    # Делаем массивы одинаковой длины с помощью интерполяции
+    max_length = max(len(user_contour), len(ref_contour))
+
+    def interpolate_contour(contour, target_length):
+        x_old = np.linspace(0, 1, len(contour))
+        x_new = np.linspace(0, 1, target_length)
+        f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
+        return f(x_new)
+
+    user_contour = interpolate_contour(user_contour, max_length)
+    ref_contour = interpolate_contour(ref_contour, max_length)
+
+    correlation = np.corrcoef(user_contour, ref_contour)[0, 1] if max_length > 1 else 0
     return max(0, correlation * 100)
 
 def evaluate_speaking(user_audio, reference_audio):
