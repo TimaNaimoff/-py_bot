@@ -313,6 +313,7 @@ def send_question(message):
         word, description, difficulty = question_data
         is_audio_only = False
         is_speaking_task = difficulty in [3, 10] and random.randint(1, 4) == 1
+        is_reading_task = difficulty == 10 and random.randint(1, 3) == 1  # Новый тип задания
         
         if difficulty in [1, 10] and random.randint(1, 3) == 1:
             difficulty = 7 if difficulty == 1 else 15
@@ -327,18 +328,14 @@ def send_question(message):
             "start_time": start_time,
             "question_text": description,
             "is_speaking_task": is_speaking_task,
-            "is_reading_task": difficulty == 10 
+            "is_reading_task": is_reading_task  # Добавляем новый параметр
         }
         
-        logging.info(f"[send_question] Chat {chat_id}: is_speaking_task={is_speaking_task}, is_audio_only={is_audio_only}")
+        logging.info(f"[send_question] Chat {chat_id}: is_speaking_task={is_speaking_task}, is_audio_only={is_audio_only}, is_reading_task={is_reading_task}")
         
-        tts_file = speak_text(description)
-        
-        if tts_file and os.path.exists(tts_file):
-            with open(tts_file, "rb") as audio:
-                bot.send_audio(chat_id, audio)
-        
-        if is_speaking_task:
+        if is_reading_task:
+            bot.send_message(chat_id, f"📖 *Прочитай вслух и запиши!* **{difficulty} - lvl** {emoji} \n*{description}*", parse_mode="Markdown")
+        elif is_speaking_task:
             bot.send_message(chat_id, f"🎙️ *Говори! Запиши голосовой ответ!* **{difficulty} - lvl** {emoji} \n*{description}*", parse_mode="Markdown")
         elif not is_audio_only:
             bot.send_message(chat_id, f"**{difficulty} - lvl** {emoji} {description}", parse_mode="Markdown")
