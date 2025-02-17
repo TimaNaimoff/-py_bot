@@ -445,7 +445,7 @@ def check_voice_answer(message):
         logging.warning(f"[check_voice_answer] Chat {chat_id}: No active session.")
         return
     
-    if not session.get("is_speaking_task") and not session.get("is_reading_task"):
+    if not session.get("is_speaking_task") or not session.get("is_reading_task"):
         logging.warning(f"[check_voice_answer] Chat {chat_id}: Received voice but task is not speaking or reading. Ignoring.")
         return
 
