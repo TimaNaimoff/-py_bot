@@ -383,7 +383,35 @@ def normalize_audio(audio_path):
     except Exception as e:
         logging.error(f"[normalize_audio] Error normalizing {audio_path}: {e}")
         return audio_path
-
+def analyze_speech(user_audio, reference_audio):
+    try:
+        logging.debug(f"[analyze_speech] Analyzing {user_audio} and {reference_audio}")
+        user_audio = remove_silence(user_audio)
+        reference_audio = remove_silence(reference_audio)
+        
+        user_audio = normalize_audio(user_audio)
+        reference_audio = normalize_audio(reference_audio)
+        
+        user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
+        if user_sound is None or reference_sound is None:
+            logging.error("[analyze_speech] Failed to process audio, returning default scores.")
+            return 0, 0, 0
+        
+        user_pitch = user_sound.to_pitch().selected_array['frequency']
+        ref_pitch = reference_sound.to_pitch().selected_array['frequency']
+        
+        if user_pitch.size == 0 or ref_pitch.size == 0:
+            logging.error(f"[analyze_speech] Empty pitch array: user={user_pitch.size}, ref={ref_pitch.size}")
+            return 0, 0, 0
+        
+        pitch_score = 100 - np.abs(np.mean(user_pitch) - np.mean(ref_pitch))
+        jitter_score = 100 - np.abs(np.std(user_pitch) - np.std(ref_pitch)) * 10
+        shimmer_score = 100 - np.abs(np.var(user_pitch) - np.var(ref_pitch)) * 10
+        
+        return max(0, pitch_score), max(0, jitter_score), max(0, shimmer_score)
+    except Exception as e:
+        logging.error(f"[analyze_speech] Error analyzing speech: {e}")
+        return 0, 0, 0
 def analyze_formants(audio_path):
     sound = parselmouth.Sound(audio_path)
     formant = sound.to_formant_burg()
