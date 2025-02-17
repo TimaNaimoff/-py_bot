@@ -373,22 +373,21 @@ def remove_silence(audio_path):
     try:
         logging.debug(f"[remove_silence] Processing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
-        sound = sound.low_pass_filter(3000)  # Фильтрация шума
-        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40, min_silence_len=100)
-        
+        non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40, min_silence_len=200)
         if not non_silent_chunks:
             return audio_path
         
         start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
-        trimmed_sound = sound[start_trim:end_trim]
+        trimmed_sound = sound[max(0, start_trim - 100):min(len(sound), end_trim + 100)]
+        
         trimmed_path = "trimmed_" + audio_path
         trimmed_sound.export(trimmed_path, format="wav")
-        
         logging.debug(f"[remove_silence] Trimmed audio saved to {trimmed_path}")
         return trimmed_path
     except Exception as e:
         logging.error(f"[remove_silence] Error processing {audio_path}: {e}")
         return audio_path
+
 
 def normalize_audio(audio_path):
     try:
@@ -465,44 +464,50 @@ def analyze_fluency(audio_path):
     return max(0, 100 - pauses * 5)
 
 def analyze_prosody(user_audio, reference_audio):
-    user_sound = parselmouth.Sound(user_audio).to_pitch()
-    ref_sound = parselmouth.Sound(reference_audio).to_pitch()
+    try:
+        user_sound = parselmouth.Sound(user_audio).to_pitch()
+        ref_sound = parselmouth.Sound(reference_audio).to_pitch()
 
-    user_contour = user_sound.selected_array['frequency']
-    ref_contour = ref_sound.selected_array['frequency']
+        user_contour = user_sound.selected_array['frequency']
+        ref_contour = ref_sound.selected_array['frequency']
 
-    user_contour = user_contour[~np.isnan(user_contour)]
-    ref_contour = ref_contour[~np.isnan(ref_contour)]
+        user_contour = user_contour[~np.isnan(user_contour)]
+        ref_contour = ref_contour[~np.isnan(ref_contour)]
 
-    if len(user_contour) == 0 or len(ref_contour) == 0:
+        if len(user_contour) < 5 or len(ref_contour) < 5:
+            return 0
+
+        max_length = max(len(user_contour), len(ref_contour))
+
+        def interpolate_contour(contour, target_length):
+            x_old = np.linspace(0, 1, len(contour))
+            x_new = np.linspace(0, 1, target_length)
+            f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
+            return f(x_new)
+
+        user_contour = interpolate_contour(user_contour, max_length)
+        ref_contour = interpolate_contour(ref_contour, max_length)
+
+        correlation = np.corrcoef(user_contour, ref_contour)[0, 1] if max_length > 5 else 0
+        return max(0, min(100, correlation * 100))
+    except Exception as e:
+        logging.error(f"[analyze_prosody] Error: {e}")
         return 0
 
-    max_length = max(len(user_contour), len(ref_contour))
-    
-    def interpolate_contour(contour, target_length):
-        x_old = np.linspace(0, 1, len(contour))
-        x_new = np.linspace(0, 1, target_length)
-        f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
-        return f(x_new)
-    
-    user_contour = interpolate_contour(user_contour, max_length)
-    ref_contour = interpolate_contour(ref_contour, max_length)
-    
-    correlation = np.corrcoef(user_contour, ref_contour)[0, 1] if max_length > 1 else 0
-    prosody_score = max(0, correlation * 100)
-    
-    return prosody_score
 
 def evaluate_speaking(user_audio, reference_audio):
     pitch_score, jitter_score, shimmer_score = analyze_speech(user_audio, reference_audio)
     prosody_score = analyze_prosody(user_audio, reference_audio)
-    formant_score = analyze_formants(user_audio)
     fluency_score = analyze_fluency(user_audio)
     speech_rate_score = analyze_speech_rate(user_audio)
     
     final_score = (
-        pitch_score * 0.15 + jitter_score * 0.15 + shimmer_score * 0.2 +
-        prosody_score * 0.2 + formant_score * 0.15 + fluency_score * 0.1 + speech_rate_score * 0.05
+        pitch_score * 0.2 + 
+        jitter_score * 0.2 + 
+        shimmer_score * 0.2 + 
+        prosody_score * 0.2 + 
+        fluency_score * 0.1 + 
+        speech_rate_score * 0.1
     )
     
     return round(final_score, 2)
