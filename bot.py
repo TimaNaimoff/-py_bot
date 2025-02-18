@@ -509,12 +509,27 @@ def analyze_prosody(user_audio, reference_audio):
         ref_pitch = analyze_pitch(reference_audio)
         
         if user_pitch is None or ref_pitch is None:
+            logging.error("[analyze_prosody] Error: One of the pitch arrays is None")
+            return 0
+
+        logging.debug(f"[analyze_prosody] user_pitch type: {type(user_pitch)}, value: {user_pitch}")
+        logging.debug(f"[analyze_prosody] ref_pitch type: {type(ref_pitch)}, value: {ref_pitch}")
+
+        if not isinstance(user_pitch, (list, np.ndarray)) or not isinstance(ref_pitch, (list, np.ndarray)):
+            logging.error("[analyze_prosody] Error: Pitch data is not a list or array")
+            return 0
+
+        user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
+        ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
+
+        if user_pitch.size == 0 or ref_pitch.size == 0:
+            logging.error("[analyze_prosody] Error: One of the pitch arrays is empty after processing")
             return 0
         
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
-
         prosody_score = max(0, 100 - distance * 0.1)
         
+        logging.debug(f"[analyze_prosody] Calculated prosody_score: {prosody_score}")
         return prosody_score
     except Exception as e:
         logging.error(f"[analyze_prosody] Error: {e}")
