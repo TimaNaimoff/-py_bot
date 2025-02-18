@@ -533,7 +533,8 @@ def analyze_prosody(user_audio, reference_audio):
 
         logging.info(f"user_pitch: type={type(user_pitch)}, shape={user_pitch.shape}, ndim={user_pitch.ndim}, dtype={user_pitch.dtype}, has NaN={np.isnan(user_pitch).any()}")
         logging.info(f"ref_pitch: type={type(ref_pitch)}, shape={ref_pitch.shape}, ndim={ref_pitch.ndim}, dtype={ref_pitch.dtype}, has NaN={np.isnan(ref_pitch).any()}")
-
+        user_pitch = user_pitch.flatten()
+        ref_pitch = ref_pitch.flatten()  
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
 
