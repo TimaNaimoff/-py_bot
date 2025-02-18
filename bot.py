@@ -573,7 +573,8 @@ def evaluate_speaking(user_audio, reference_audio):
         text_match_score = 0
     
     final_score = round((pitch_final_score * 0.3) + (prosody_score * 0.3) + (text_match_score * 0.4), 2)
-    return final_scoredef convert_to_wav(audio_file):
+    return final_score
+def convert_to_wav(audio_file):
     if not os.path.exists(audio_file):
         logging.error(f"[convert_to_wav] Error: File {audio_file} not found.")
         return None
