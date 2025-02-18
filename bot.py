@@ -388,6 +388,7 @@ def remove_silence(audio_path):
         return audio_path
 
 
+
 def normalize_audio(audio_path):
     try:
         sound = AudioSegment.from_file(audio_path)
@@ -482,23 +483,15 @@ def analyze_fluency(audio_path):
 
 
 def analyze_prosody(user_audio, reference_audio):
+    """Анализирует мелодику речи, используя динамическую временную нормализацию (DTW)."""
     try:
-        user_sound = parselmouth.Sound(user_audio).to_pitch()
-        ref_sound = parselmouth.Sound(reference_audio).to_pitch()
+        user_pitch = analyze_pitch(user_audio)
+        ref_pitch = analyze_pitch(reference_audio)
         
-        user_contour = user_sound.selected_array['frequency']
-        ref_contour = ref_sound.selected_array['frequency']
-        
-        user_contour = user_contour[~np.isnan(user_contour)]
-        ref_contour = ref_contour[~np.isnan(ref_contour)]
-        
-        if len(user_contour) < 5 or len(ref_contour) < 5:
+        if user_pitch is None or ref_pitch is None:
             return 0
         
-        user_contour = (user_contour - np.mean(user_contour)) / np.std(user_contour)
-        ref_contour = (ref_contour - np.mean(ref_contour)) / np.std(ref_contour)
-        
-        distance, _ = fastdtw(user_contour, ref_contour, dist=euclidean)
+        distance, _ = fastdtw([user_pitch], [ref_pitch], dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
         
         return prosody_score
@@ -507,100 +500,65 @@ def analyze_prosody(user_audio, reference_audio):
         return 0
 
 def evaluate_speaking(user_audio, reference_audio):
-    user_pitch = analyze_pitch(user_audio)
+    """Оценивает произношение по высоте тона и просодии."""
+    user_audio = process_audio(user_audio)
+    reference_audio = process_audio(reference_audio)
+    
+    pitch_score = analyze_pitch(user_audio)
     reference_pitch = analyze_pitch(reference_audio)
     
-    if user_pitch is None or reference_pitch is None:
+    if pitch_score is None or reference_pitch is None:
         return 0
     
-    pitch_difference = abs(user_pitch - reference_pitch)
-    pitch_score = max(0, 100 - (pitch_difference ** 0.8) * 3)  # Используем логарифмическую шкалу
-    final_score = round(pitch_score * 0.5, 2)
-    logging.info(f"Final Speech Score: {final_score}")
+    pitch_difference = abs(pitch_score - reference_pitch)
+    pitch_final_score = max(0, 100 - (pitch_difference ** 0.8) * 3)
+    
+    prosody_score = analyze_prosody(user_audio, reference_audio)
+    
+    final_score = round((pitch_final_score * 0.5) + (prosody_score * 0.5), 2)
     return final_score
 
-
 def analyze_pitch(audio_file):
+    """Извлекает среднюю высоту тона из аудиофайла."""
     try:
-        logging.info(f"Загрузка аудиофайла: {audio_file}")
-        y, sr = sf.read(audio_file)
-        
-        if np.all(y == 0):
-            logging.error("Ошибка: аудиофайл содержит только тишину или не распознан.")
-            return None
-        
-        logging.info("Файл успешно загружен, начало анализа высоты тона.")
         sound = parselmouth.Sound(audio_file)
-        pitch = parselmouth.praat.call(sound, "To Pitch", 0.0, 75, 600)
+        pitch = sound.to_pitch()
         pitch_values = pitch.selected_array['frequency']
-        pitch_values = pitch_values[pitch_values > 0]  # Убираем нулевые значения
+        pitch_values = pitch_values[pitch_values > 0]
         
-        if len(pitch_values) == 0:
-            logging.error("Ошибка: высота тона не определена.")
-            return None
-        
-        mean_pitch = np.mean(pitch_values)
-        logging.info(f"Средняя высота тона: {mean_pitch:.2f} Hz")
-        return mean_pitch
+        return np.mean(pitch_values) if len(pitch_values) > 0 else None
     except Exception as e:
-        logging.exception(f"Ошибка при анализе высоты тона: {e}")
+        logging.error(f"[analyze_pitch] Error: {e}")
         return None
 
 
+
 @bot.message_handler(content_types=['voice'])
-def check_voice_answer(message):
-    chat_id = message.chat.id
-    session = user_sessions.get(chat_id)
-    logging.info(f"[check_voice_answer] Chat {chat_id}: session found = {session is not None}")
-    
-    if not session:
-        logging.warning(f"[check_voice_answer] Chat {chat_id}: No active session.")
-        return
+def check_voice_answer(chat_id, audio_path, session):
+    logging.info(f"[check_voice_answer] Chat {chat_id}: Processing voice answer")
     
     if not session.get("is_speaking_task") and not session.get("is_reading_task"):
-        logging.warning(f"[check_voice_answer] Chat {chat_id}: Received voice but task is not speaking or reading. Ignoring.")
+        logging.warning(f"[check_voice_answer] Chat {chat_id}: No relevant task.")
         return
     
-    file_id = message.voice.file_id
-    file_info = bot.get_file(file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
+    if session.get("is_reading_task"):
+        tts = gTTS(session["question_text"], lang="en")
+        reference_audio = "reference_tts.wav"
+        tts.save(reference_audio)
+    else:
+        reference_audio = "reference_speech.wav"
+        tts = gTTS(session["correct_answer"], lang="en")
+        tts.save(reference_audio)
     
-    audio_path = f"voice_{chat_id}.ogg"
-    with open(audio_path, "wb") as f:
-        f.write(downloaded_file)
-    logging.info(f"[check_voice_answer] Chat {chat_id}: Audio file saved as {audio_path}")
+    final_score = evaluate_speaking(audio_path, reference_audio)
+    logging.info(f"[check_voice_answer] Chat {chat_id}: Evaluation completed with score {final_score}")
     
-    wav_path = f"voice_{chat_id}.wav"
-    AudioSegment.from_file(audio_path).export(wav_path, format="wav")
+    bot.send_message(chat_id, f"🎯 Точность речи: {final_score}%")
+    
     os.remove(audio_path)
-    logging.info(f"[check_voice_answer] Chat {chat_id}: Converted audio to WAV {wav_path}")
-    
-    try:
-        if session.get("is_reading_task"):
-            tts_file = "reference_tts.wav"
-            tts = gTTS(session["question_text"], lang="en")
-            tts.save(tts_file)
-        else:
-            tts_file = speak_text(session["correct_answer"])
-        
-        logging.info(f"[check_voice_answer] Chat {chat_id}: TTS file generated {tts_file}")
-        
-        final_score = evaluate_speaking(wav_path, tts_file)
-        logging.info(f"[check_voice_answer] Chat {chat_id}: Evaluation completed with score {final_score}")
-        
-        bot.send_message(chat_id, f"🎯 Точность речи: {final_score}%")
-        
-        if session.get("is_speaking_task"):
-            bot.send_audio(chat_id, open(wav_path, "rb"))
-        
-    except Exception as e:
-        logging.error(f"[check_voice_answer] Chat {chat_id}: Error processing voice input - {e}")
-    
-    finally:
-        os.remove(wav_path)
-        logging.info(f"[check_voice_answer] Chat {chat_id}: Removed temporary file {wav_path}")
+    os.remove(reference_audio)
+    logging.info(f"[check_voice_answer] Chat {chat_id}: Removed temporary files")
 
-    
     
 
 def compare_texts(user_text, correct_text):
@@ -724,7 +682,10 @@ def leaderboard(message):
     logging.info(f"Пользователь {message.chat.id} запросил таблицу лидеров.")
 
 
-    
+def process_audio(audio_path):
+    """Обрабатывает аудиофайл: удаляет тишину и нормализует громкость."""
+    trimmed_path = remove_silence(audio_path)
+    normalized_path = normalize_audio(trimmed_path)    
 
 @bot.message_handler(commands=['clean'])
 def clean(message):
