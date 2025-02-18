@@ -306,7 +306,21 @@ def play_audio(call):
             with open(tts_file, "rb") as audio:
                 bot.send_audio(chat_id, audio)
 
+def check_audio_validity(audio_file):
+    if not os.path.exists(audio_file):
+        logging.error(f"[check_audio_validity] Error: File {audio_file} not found.")
+        return False
 
+    try:
+        with sf.SoundFile(audio_file) as f:
+            if f.frames == 0:
+                logging.error(f"[check_audio_validity] Error: {audio_file} is empty.")
+                return False
+    except Exception as e:
+        logging.error(f"[check_audio_validity] Error reading {audio_file}: {e}")
+        return False
+
+    return True
 def send_question(message):
     chat_id = message.chat.id  
     username = message.from_user.username or message.from_user.first_name
