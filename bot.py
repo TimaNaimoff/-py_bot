@@ -513,8 +513,8 @@ def analyze_fluency(audio_path):
 def analyze_prosody(user_audio, reference_audio):
     """Анализирует мелодику речи, используя динамическую временную нормализацию (DTW)."""
     try:
-        user_pitch = analyze_pitch(user_audio)
-        ref_pitch = analyze_pitch(reference_audio)
+        user_pitch = analyze_pitch_2(user_audio)
+        ref_pitch = analyze_pitch_2(reference_audio)
 
         logging.info(f"user_pitch: {user_pitch}")
         logging.info(f"ref_pitch: {ref_pitch}")
@@ -523,8 +523,8 @@ def analyze_prosody(user_audio, reference_audio):
             logging.error("[analyze_prosody] Error: One of the pitch values is None")
             return 0
 
-        #user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
-        #ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
+        user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
+        ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
 
         # Приведение к одинаковой длине
         min_length = min(len(user_pitch), len(ref_pitch))
