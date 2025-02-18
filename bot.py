@@ -358,13 +358,19 @@ def send_question(message):
 
 def match_audio_length(user_audio, reference_audio):
     try:
+        if not check_audio_validity(user_audio) or not check_audio_validity(reference_audio):
+            return None, None
+
         user_sound = parselmouth.Sound(user_audio)
         reference_sound = parselmouth.Sound(reference_audio)
         
         min_duration = min(user_sound.get_total_duration(), reference_sound.get_total_duration())
         logging.debug(f"Matching audio length to {min_duration} seconds")
         
-        return user_sound.extract_part(0, min_duration), reference_sound.extract_part(0, min_duration)
+        return (
+            user_sound.extract_part(0, min_duration, preserve_times=True),
+            reference_sound.extract_part(0, min_duration, preserve_times=True)
+        )
     except Exception as e:
         logging.error(f"[match_audio_length] Error: {e}")
         return None, None
@@ -521,15 +527,20 @@ def evaluate_speaking(user_audio, reference_audio):
 def analyze_pitch(audio_file):
     """Извлекает среднюю высоту тона из аудиофайла."""
     try:
+        if not check_audio_validity(audio_file):
+            return None
+        
+        audio_file = convert_to_wav(audio_file)  # Принудительная конвертация
         sound = parselmouth.Sound(audio_file)
         pitch = sound.to_pitch()
         pitch_values = pitch.selected_array['frequency']
-        pitch_values = pitch_values[pitch_values > 0]
+        pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
         
         return np.mean(pitch_values) if len(pitch_values) > 0 else None
     except Exception as e:
         logging.error(f"[analyze_pitch] Error: {e}")
         return None
+
 
 
 
