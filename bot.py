@@ -507,7 +507,6 @@ def analyze_prosody(user_audio, reference_audio):
         return 0
 
 
-
 def evaluate_speaking(user_audio, reference_audio):
     user_pitch = analyze_pitch(user_audio)
     reference_pitch = analyze_pitch(reference_audio)
