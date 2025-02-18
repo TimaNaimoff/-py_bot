@@ -514,8 +514,9 @@ def analyze_prosody(user_audio, reference_audio):
             return 0
 
         # Приводим массивы к float64 и гарантируем, что они 1D
-        user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
-        ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
+
+        user_pitch = np.array(user_pitch, dtype=np.float64).reshape(-1)
+        ref_pitch = np.array(ref_pitch, dtype=np.float64).reshape(-1)
 
         if user_pitch.ndim != 1 or ref_pitch.ndim != 1:
             logging.error(f"[analyze_prosody] Error: Pitch arrays are not 1D! user_pitch.shape={user_pitch.shape}, ref_pitch.shape={ref_pitch.shape}")
@@ -526,7 +527,7 @@ def analyze_prosody(user_audio, reference_audio):
             return 0
 
         # Приводим массивы к одинаковой длине
-        target_length = min(len(user_pitch), len(ref_pitch))
+        target_length = max(len(user_pitch), len(ref_pitch))
         user_pitch = resample_pitch(user_pitch, target_length)
         ref_pitch = resample_pitch(ref_pitch, target_length)
 
@@ -554,7 +555,7 @@ def resample_pitch(pitch, target_length):
         logging.error("[resample_pitch] Error: Empty or None pitch array")
         return np.zeros(target_length, dtype=np.float64)  # Возвращаем массив нулей
 
-    pitch = np.array(pitch, dtype=np.float64).flatten()
+    pitch = np.array(pitch, dtype=np.float64).reshape(-1)
 
     if pitch.ndim != 1:
         logging.error(f"[resample_pitch] Error: pitch is not 1D! shape={pitch.shape}")
@@ -569,7 +570,7 @@ def resample_pitch(pitch, target_length):
     interpolator = interp1d(x_old, pitch, kind='linear', fill_value="extrapolate")
     resampled_pitch = interpolator(x_new)
 
-    resampled_pitch = np.array(resampled_pitch, dtype=np.float64).flatten()
+    resampled_pitch = np.array(resampled_pitch, dtype=np.float64).reshape(-1)
 
     if resampled_pitch.ndim != 1:
         logging.error(f"[resample_pitch] Error: After resampling, array is not 1D! shape={resampled_pitch.shape}")
@@ -670,7 +671,8 @@ def analyze_pitch(audio_file):
             return None
 
         # Приводим массив к 1D
-        pitch_values = np.array(pitch_values, dtype=np.float64).flatten()
+        pitch_values = np.array(pitch_values, dtype=np.float64).reshape(-1)
+
         
         logging.debug(f"[analyze_pitch] Extracted pitch values (size={pitch_values.size}): {pitch_values[:10]}...")
 
