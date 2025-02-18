@@ -531,8 +531,8 @@ def analyze_prosody(user_audio, reference_audio):
         user_pitch = match_pitch_length(user_pitch, min_length)
         ref_pitch = match_pitch_length(ref_pitch, min_length)
 
-        logging.info(f"user_pitch: {user_pitch}")
-        logging.info(f"ref_pitch: {ref_pitch}")
+        logging.info(f"user_pitch: type={type(user_pitch)}, shape={user_pitch.shape}, ndim={user_pitch.ndim}")
+        logging.info(f"ref_pitch: type={type(ref_pitch)}, shape={ref_pitch.shape}, ndim={ref_pitch.ndim}")
 
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
