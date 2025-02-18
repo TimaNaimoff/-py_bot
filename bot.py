@@ -507,13 +507,22 @@ def analyze_prosody(user_audio, reference_audio):
     try:
         user_pitch = analyze_pitch(user_audio)
         ref_pitch = analyze_pitch(reference_audio)
-        
+
+        logging.debug(f"[analyze_prosody] Raw user_pitch: {user_pitch}")
+        logging.debug(f"[analyze_prosody] Raw ref_pitch: {ref_pitch}")
+
         if user_pitch is None or ref_pitch is None:
-            logging.error("[analyze_prosody] Error: One of the pitch arrays is None")
+            logging.error("[analyze_prosody] Error: One of the pitch values is None")
             return 0
 
-        logging.debug(f"[analyze_prosody] user_pitch type: {type(user_pitch)}, value: {user_pitch}")
-        logging.debug(f"[analyze_prosody] ref_pitch type: {type(ref_pitch)}, value: {ref_pitch}")
+        # Приводим одиночное число к массиву
+        if isinstance(user_pitch, (int, float)):
+            user_pitch = np.array([user_pitch], dtype=np.float64)
+        if isinstance(ref_pitch, (int, float)):
+            ref_pitch = np.array([ref_pitch], dtype=np.float64)
+
+        logging.debug(f"[analyze_prosody] Processed user_pitch type: {type(user_pitch)}, value: {user_pitch}")
+        logging.debug(f"[analyze_prosody] Processed ref_pitch type: {type(ref_pitch)}, value: {ref_pitch}")
 
         if not isinstance(user_pitch, (list, np.ndarray)) or not isinstance(ref_pitch, (list, np.ndarray)):
             logging.error("[analyze_prosody] Error: Pitch data is not a list or array")
@@ -525,15 +534,16 @@ def analyze_prosody(user_audio, reference_audio):
         if user_pitch.size == 0 or ref_pitch.size == 0:
             logging.error("[analyze_prosody] Error: One of the pitch arrays is empty after processing")
             return 0
-        
+
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
-        
+
         logging.debug(f"[analyze_prosody] Calculated prosody_score: {prosody_score}")
         return prosody_score
     except Exception as e:
         logging.error(f"[analyze_prosody] Error: {e}")
         return 0
+
 
 def evaluate_speaking(user_audio, reference_audio):
     """Оценивает произношение по высоте тона и просодии."""
