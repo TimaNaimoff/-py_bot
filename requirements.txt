@@ -48,3 +48,5 @@ praat-parselmouth==0.4.5
 pydub==0.25.1
 matplotlib==3.8.2
 fastdtw==0.3.4
+soundfile==0.12.1
+

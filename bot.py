@@ -19,6 +19,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.spatial.distance import euclidean
 from fastdtw import fastdtw
+import soundfile as sf
 
 app = Flask(__name__)
 
@@ -513,47 +514,33 @@ def evaluate_speaking(user_audio, reference_audio):
     logging.info(f"Final Speech Score: {final_score}")
     return final_score
 
-def analyze_pitch(user_audio, reference_audio):
+def analyze_pitch(audio_file):
     try:
-        user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
-        if not user_sound or not reference_sound:
-            return 0
+        logging.info(f"Загрузка аудиофайла: {audio_file}")
+        y, sr = sf.read(audio_file)
         
-        user_pitch = user_sound.to_pitch().selected_array['frequency']
-        ref_pitch = reference_sound.to_pitch().selected_array['frequency']
+        if np.all(y == 0):
+            logging.error("Ошибка: аудиофайл содержит только тишину или не распознан.")
+            return None
         
-        logging.info(f"Raw user pitch: {user_pitch}")
-        logging.info(f"Raw ref pitch: {ref_pitch}")
+        logging.info("Файл успешно загружен, начало анализа высоты тона.")
+        sound = parselmouth.Sound(audio_file)
+        pitch = parselmouth.praat.call(sound, "To Pitch", 0.0, 75, 600)
+        pitch_values = pitch.selected_array['frequency']
+        pitch_values = pitch_values[pitch_values > 0]  # Убираем нулевые значения
         
-        user_pitch = user_pitch[~np.isnan(user_pitch)]
-        ref_pitch = ref_pitch[~np.isnan(ref_pitch)]
+        if len(pitch_values) == 0:
+            logging.error("Ошибка: высота тона не определена.")
+            return None
         
-        if len(user_pitch) < 5 or len(ref_pitch) < 5:
-            logging.info("Pitch arrays too small, returning 0")
-            return 0
-        
-        max_length = max(len(user_pitch), len(ref_pitch))
-        
-        def interpolate_contour(contour, target_length):
-            x_old = np.linspace(0, 1, len(contour))
-            x_new = np.linspace(0, 1, target_length)
-            f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
-            return f(x_new)
-        
-        user_pitch = interpolate_contour(user_pitch, max_length)
-        ref_pitch = interpolate_contour(ref_pitch, max_length)
-        
-        pitch_diff = np.abs(np.mean(user_pitch) - np.mean(ref_pitch))
-        logging.info(f"Mean User Pitch: {np.mean(user_pitch)}, Mean Ref Pitch: {np.mean(ref_pitch)}")
-        logging.info(f"Pitch Difference: {pitch_diff}")
-        
-        pitch_score = max(0, 100 - pitch_diff * 5)
-        logging.info(f"Pitch Score: {pitch_score}")
-        
-        return pitch_score
+        mean_pitch = np.mean(pitch_values)
+        logging.info(f"Средняя высота тона: {mean_pitch:.2f} Hz")
+        return mean_pitch
     except Exception as e:
-        logging.error(f"[analyze_pitch] Error: {e}")
-        return 0
+        logging.exception(f"Ошибка при анализе высоты тона: {e}")
+        return None
+
+
 @bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
