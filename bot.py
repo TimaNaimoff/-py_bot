@@ -509,10 +509,17 @@ def analyze_prosody(user_audio, reference_audio):
 
 
 def evaluate_speaking(user_audio, reference_audio):
-    pitch_score = analyze_pitch(user_audio, reference_audio)
+    user_pitch = analyze_pitch(user_audio)
+    reference_pitch = analyze_pitch(reference_audio)
+    
+    if user_pitch is None or reference_pitch is None:
+        return 0
+    
+    pitch_score = max(0, 100 - abs(user_pitch - reference_pitch) * 5)
     final_score = round(pitch_score * 0.5, 2)  # Упростил формулу оценки
     logging.info(f"Final Speech Score: {final_score}")
     return final_score
+
 
 def analyze_pitch(audio_file):
     try:
