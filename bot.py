@@ -552,30 +552,49 @@ def convert_to_wav(audio_file):
         return None
 
 def analyze_pitch(audio_file):
-    """Извлекает среднюю высоту тона из аудиофайла."""
+    """Извлекает среднюю высоту тона из аудиофайла с подробными логами."""
     try:
+        logging.debug(f"[analyze_pitch] Received audio_file: {audio_file}")
+        
         if not audio_file:
             logging.error("[analyze_pitch] Error: audio_file is None")
             return None
         
+        if not os.path.exists(audio_file):
+            logging.error(f"[analyze_pitch] Error: File {audio_file} does not exist")
+            return None
+        
+        logging.debug(f"[analyze_pitch] Checking validity of {audio_file}")
         if not check_audio_validity(audio_file):
+            logging.error(f"[analyze_pitch] Error: {audio_file} failed validity check")
             return None
-
+        
+        logging.debug(f"[analyze_pitch] Converting {audio_file} to WAV format")
         audio_file = convert_to_wav(audio_file)  # Принудительная конвертация
-        if not audio_file:
-            logging.error("[analyze_pitch] Error: convert_to_wav returned None")
+        
+        if not audio_file or not os.path.exists(audio_file):
+            logging.error("[analyze_pitch] Error: convert_to_wav returned None or invalid file")
             return None
-
+        
+        logging.debug(f"[analyze_pitch] Processing file: {audio_file}")
         sound = parselmouth.Sound(audio_file)
         pitch = sound.to_pitch()
         pitch_values = pitch.selected_array['frequency']
+        
+        logging.debug(f"[analyze_pitch] Raw pitch values: {pitch_values}")
         pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
-
-        return np.mean(pitch_values) if len(pitch_values) > 0 else None
+        
+        if len(pitch_values) == 0:
+            logging.warning(f"[analyze_pitch] Warning: No valid pitch values extracted from {audio_file}")
+            return None
+        
+        mean_pitch = np.mean(pitch_values)
+        logging.debug(f"[analyze_pitch] Mean pitch value: {mean_pitch}")
+        return mean_pitch
+        
     except Exception as e:
-        logging.error(f"[analyze_pitch] Error: {e}")
+        logging.error(f"[analyze_pitch] Exception: {e}", exc_info=True)
         return None
-
 
 
 
