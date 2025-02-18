@@ -542,6 +542,8 @@ def analyze_prosody(user_audio, reference_audio):
         if user_pitch.size == 0 or ref_pitch.size == 0:
             logging.error("[analyze_prosody] Error: One of the pitch arrays is empty after processing")
             return 0
+        logging.info(f"user_pitch: {user_pitch}")
+        logging.info(f"ref_pitch: {ref_pitch}")
 
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
