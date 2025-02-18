@@ -506,7 +506,6 @@ def analyze_prosody(user_audio, reference_audio):
         logging.error(f"[analyze_prosody] Error: {e}")
         return 0
 
-
 def evaluate_speaking(user_audio, reference_audio):
     user_pitch = analyze_pitch(user_audio)
     reference_pitch = analyze_pitch(reference_audio)
@@ -514,8 +513,9 @@ def evaluate_speaking(user_audio, reference_audio):
     if user_pitch is None or reference_pitch is None:
         return 0
     
-    pitch_score = max(0, 100 - abs(user_pitch - reference_pitch) * 5)
-    final_score = round(pitch_score * 0.5, 2)  # Упростил формулу оценки
+    pitch_difference = abs(user_pitch - reference_pitch)
+    pitch_score = max(0, 100 - (pitch_difference ** 0.8) * 3)  # Используем логарифмическую шкалу
+    final_score = round(pitch_score * 0.5, 2)
     logging.info(f"Final Speech Score: {final_score}")
     return final_score
 
