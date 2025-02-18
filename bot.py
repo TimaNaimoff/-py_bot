@@ -513,25 +513,28 @@ def analyze_prosody(user_audio, reference_audio):
             logging.error("[analyze_prosody] Error: One of the pitch values is None")
             return 0
 
-        # Преобразуем в NumPy и выравниваем
+        # Приводим массивы к float64 и гарантируем, что они 1D
         user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
         ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
 
-        # Проверяем, что массивы не пустые
+        if user_pitch.ndim != 1 or ref_pitch.ndim != 1:
+            logging.error(f"[analyze_prosody] Error: Pitch arrays are not 1D! user_pitch.shape={user_pitch.shape}, ref_pitch.shape={ref_pitch.shape}")
+            return 0
+
         if user_pitch.size == 0 or ref_pitch.size == 0:
             logging.error("[analyze_prosody] Error: One of the pitch arrays is empty")
             return 0
 
         # Приводим массивы к одинаковой длине
-        target_length = min(len(user_pitch), len(ref_pitch))  
+        target_length = min(len(user_pitch), len(ref_pitch))
         user_pitch = resample_pitch(user_pitch, target_length)
         ref_pitch = resample_pitch(ref_pitch, target_length)
 
         logging.debug(f"[analyze_prosody] Final shapes: user_pitch={user_pitch.shape}, ref_pitch={ref_pitch.shape}")
 
-        # Проверяем, что входные данные 1D перед DTW
+        # Проверяем, что после ресэмплинга массивы все еще 1D
         if user_pitch.ndim != 1 or ref_pitch.ndim != 1:
-            logging.error("[analyze_prosody] Error: Input vector is not 1-D after processing")
+            logging.error(f"[analyze_prosody] Error: After resampling, arrays are not 1D! user_pitch.shape={user_pitch.shape}, ref_pitch.shape={ref_pitch.shape}")
             return 0
 
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
@@ -540,7 +543,7 @@ def analyze_prosody(user_audio, reference_audio):
         logging.debug(f"[analyze_prosody] Calculated prosody_score: {prosody_score}")
         return prosody_score
     except Exception as e:
-        logging.error(f"[analyze_prosody] Error: {e}")
+        logging.error(f"[analyze_prosody] Error: {e}", exc_info=True)
         return 0
 
 def resample_pitch(pitch, target_length):
