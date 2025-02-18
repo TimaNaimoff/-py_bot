@@ -552,48 +552,40 @@ def convert_to_wav(audio_file):
         return None
 
 def analyze_pitch(audio_file):
-    """Извлекает среднюю высоту тона из аудиофайла с подробными логами."""
+    """Извлекает среднюю высоту тона из аудиофайла."""
     try:
-        logging.debug(f"[analyze_pitch] Received audio_file: {audio_file}")
-        
+        logging.debug(f"[analyze_pitch] Received audio file: {audio_file}")
+
         if not audio_file:
             logging.error("[analyze_pitch] Error: audio_file is None")
             return None
-        
+
         if not os.path.exists(audio_file):
-            logging.error(f"[analyze_pitch] Error: File {audio_file} does not exist")
+            logging.error(f"[analyze_pitch] Error: File not found: {audio_file}")
             return None
-        
-        logging.debug(f"[analyze_pitch] Checking validity of {audio_file}")
+
         if not check_audio_validity(audio_file):
-            logging.error(f"[analyze_pitch] Error: {audio_file} failed validity check")
+            logging.error(f"[analyze_pitch] Error: Invalid audio file: {audio_file}")
             return None
-        
-        logging.debug(f"[analyze_pitch] Converting {audio_file} to WAV format")
-        audio_file = convert_to_wav(audio_file)  # Принудительная конвертация
-        
+
+        audio_file = convert_to_wav(audio_file)
+        logging.debug(f"[analyze_pitch] Converted audio file: {audio_file}")
+
         if not audio_file or not os.path.exists(audio_file):
-            logging.error("[analyze_pitch] Error: convert_to_wav returned None or invalid file")
+            logging.error("[analyze_pitch] Error: convert_to_wav returned None or file does not exist")
             return None
-        
-        logging.debug(f"[analyze_pitch] Processing file: {audio_file}")
+
         sound = parselmouth.Sound(audio_file)
         pitch = sound.to_pitch()
         pitch_values = pitch.selected_array['frequency']
-        
-        logging.debug(f"[analyze_pitch] Raw pitch values: {pitch_values}")
         pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
         
-        if len(pitch_values) == 0:
-            logging.warning(f"[analyze_pitch] Warning: No valid pitch values extracted from {audio_file}")
-            return None
-        
-        mean_pitch = np.mean(pitch_values)
-        logging.debug(f"[analyze_pitch] Mean pitch value: {mean_pitch}")
+        mean_pitch = np.mean(pitch_values) if len(pitch_values) > 0 else None
+        logging.debug(f"[analyze_pitch] Mean pitch: {mean_pitch}")
+
         return mean_pitch
-        
     except Exception as e:
-        logging.error(f"[analyze_pitch] Exception: {e}", exc_info=True)
+        logging.error(f"[analyze_pitch] Error: {e}", exc_info=True)
         return None
 
 
@@ -653,7 +645,22 @@ def check_voice_answer(message):
         logging.info(f"[check_voice_answer] Chat {chat_id}: Removed temporary file {wav_path}")
 
     
-    
+def process_audio(audio_path):
+    """Обрабатывает аудиофайл: удаляет тишину и нормализует громкость."""
+    logging.debug(f"[process_audio] Starting processing for: {audio_path}")
+
+    trimmed_path = remove_silence(audio_path)
+    logging.debug(f"[process_audio] Trimmed audio saved as: {trimmed_path}")
+
+    normalized_path = normalize_audio(trimmed_path)  # УБРАЛ ЛИШНЮЮ ЗАПЯТУЮ
+    logging.debug(f"[process_audio] Normalized audio saved as: {normalized_path}")
+
+    if not os.path.exists(normalized_path):
+        logging.error(f"[process_audio] ERROR: Normalized file does not exist: {normalized_path}")
+        return None
+
+    return normalized_path
+
 
 def compare_texts(user_text, correct_text):
     user_words = set(re.findall(r'\w+', user_text))
@@ -776,10 +783,7 @@ def leaderboard(message):
     logging.info(f"Пользователь {message.chat.id} запросил таблицу лидеров.")
 
 
-def process_audio(audio_path):
-    """Обрабатывает аудиофайл: удаляет тишину и нормализует громкость."""
-    trimmed_path = remove_silence(audio_path)
-    normalized_path = normalize_audio(trimmed_path)    
+    
 
 @bot.message_handler(commands=['clean'])
 def clean(message):
