@@ -686,7 +686,7 @@ def check_voice_answer(message):
 
         # Аудио-анализ (оставшиеся 50 баллов)
         audio_score = evaluate_speaking(wav_path, tts_file)
-        final_score = text_score + round(audio_score / 2)
+        final_score = round(audio_score / 2)
 
         logging.info(f"[check_voice_answer] Chat {chat_id}: Final score = {final_score}")
 
