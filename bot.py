@@ -413,12 +413,19 @@ def remove_silence(audio_path):
 def normalize_audio(audio_path):
     try:
         sound = AudioSegment.from_file(audio_path)
+        
+        # Приведение к 1 каналу (моно)
+        sound = sound.set_channels(1)
+        
+        # Нормализация громкости
         target_dBFS = -20.0
         change_in_dBFS = target_dBFS - sound.dBFS
         normalized_sound = sound.apply_gain(change_in_dBFS)
         
+        # Сохранение с изменёнными параметрами
         normalized_path = f"normalized_{os.path.basename(audio_path)}"
-        normalized_sound.export(normalized_path, format="wav")
+        normalized_sound.export(normalized_path, format="wav", parameters=["-ac", "1"])
+        
         return normalized_path
     except Exception as e:
         logging.error(f"[normalize_audio] Error: {e}")
@@ -686,7 +693,7 @@ def check_voice_answer(message):
 
         # Аудио-анализ (оставшиеся 50 баллов)
         audio_score = evaluate_speaking(wav_path, tts_file)
-        final_score = round(audio_score / 2)
+        final_score = text_score + round(audio_score / 2)
 
         logging.info(f"[check_voice_answer] Chat {chat_id}: Final score = {final_score}")
 
