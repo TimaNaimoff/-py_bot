@@ -387,7 +387,7 @@ def remove_silence(audio_path):
         return audio_path
 
 
-ef normalize_audio(audio_path):
+def normalize_audio(audio_path):
     try:
         sound = AudioSegment.from_file(audio_path)
         target_dBFS = -20.0
