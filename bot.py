@@ -506,9 +506,12 @@ def analyze_prosody(user_audio, reference_audio):
         return 0
 
 
+
 def evaluate_speaking(user_audio, reference_audio):
     pitch_score = analyze_pitch(user_audio, reference_audio)
-    return round(pitch_score, 2)
+    final_score = round(pitch_score * 0.5, 2)  # Упростил формулу оценки
+    logging.info(f"Final Speech Score: {final_score}")
+    return final_score
 
 def analyze_pitch(user_audio, reference_audio):
     try:
@@ -519,21 +522,35 @@ def analyze_pitch(user_audio, reference_audio):
         user_pitch = user_sound.to_pitch().selected_array['frequency']
         ref_pitch = reference_sound.to_pitch().selected_array['frequency']
         
+        logging.info(f"Raw user pitch: {user_pitch}")
+        logging.info(f"Raw ref pitch: {ref_pitch}")
+        
         user_pitch = user_pitch[~np.isnan(user_pitch)]
         ref_pitch = ref_pitch[~np.isnan(ref_pitch)]
         
         if len(user_pitch) < 5 or len(ref_pitch) < 5:
+            logging.info("Pitch arrays too small, returning 0")
             return 0
         
         max_length = max(len(user_pitch), len(ref_pitch))
-        def interpolate(contour, length):
-            return interp1d(np.linspace(0, 1, len(contour)), contour, kind="linear", fill_value="extrapolate")(np.linspace(0, 1, length))
         
-        user_pitch = interpolate(user_pitch, max_length)
-        ref_pitch = interpolate(ref_pitch, max_length)
+        def interpolate_contour(contour, target_length):
+            x_old = np.linspace(0, 1, len(contour))
+            x_new = np.linspace(0, 1, target_length)
+            f = interp1d(x_old, contour, kind="linear", fill_value="extrapolate")
+            return f(x_new)
+        
+        user_pitch = interpolate_contour(user_pitch, max_length)
+        ref_pitch = interpolate_contour(ref_pitch, max_length)
         
         pitch_diff = np.abs(np.mean(user_pitch) - np.mean(ref_pitch))
-        return max(0, 100 - pitch_diff * 5)
+        logging.info(f"Mean User Pitch: {np.mean(user_pitch)}, Mean Ref Pitch: {np.mean(ref_pitch)}")
+        logging.info(f"Pitch Difference: {pitch_diff}")
+        
+        pitch_score = max(0, 100 - pitch_diff * 5)
+        logging.info(f"Pitch Score: {pitch_score}")
+        
+        return pitch_score
     except Exception as e:
         logging.error(f"[analyze_pitch] Error: {e}")
         return 0
