@@ -642,7 +642,7 @@ def check_voice_answer(message):
     logging.info(f"[check_voice_answer] Chat {chat_id}: Audio file saved as {audio_path}")
     
     wav_path = f"voice_{chat_id}.wav"
-    audion = AudioSegment.from_file(audio_path).set_channels(1).export(wav_path, format="wav")
+    audio = AudioSegment.from_file(audio_path).set_channels(1).export(wav_path, format="wav")
     
     print(f"Channels: {audio.channels}")  # Должно быть 1
 
