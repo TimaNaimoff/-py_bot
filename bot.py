@@ -513,19 +513,26 @@ def analyze_prosody(user_audio, reference_audio):
             logging.error("[analyze_prosody] Error: One of the pitch values is None")
             return 0
 
+        # Преобразуем в NumPy и выравниваем
         user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
         ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
 
+        # Проверяем, что массивы не пустые
         if user_pitch.size == 0 or ref_pitch.size == 0:
             logging.error("[analyze_prosody] Error: One of the pitch arrays is empty")
             return 0
 
         # Приводим массивы к одинаковой длине
-        target_length = min(len(user_pitch), len(ref_pitch))  # Можно max(), если надо растягивать
+        target_length = min(len(user_pitch), len(ref_pitch))  
         user_pitch = resample_pitch(user_pitch, target_length)
         ref_pitch = resample_pitch(ref_pitch, target_length)
 
         logging.debug(f"[analyze_prosody] Final shapes: user_pitch={user_pitch.shape}, ref_pitch={ref_pitch.shape}")
+
+        # Проверяем, что входные данные 1D перед DTW
+        if user_pitch.ndim != 1 or ref_pitch.ndim != 1:
+            logging.error("[analyze_prosody] Error: Input vector is not 1-D after processing")
+            return 0
 
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
