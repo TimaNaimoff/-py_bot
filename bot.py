@@ -645,31 +645,58 @@ def check_voice_answer(message):
     os.remove(audio_path)
     logging.info(f"[check_voice_answer] Chat {chat_id}: Converted audio to WAV {wav_path}")
     
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(wav_path) as source:
+        audio_data = recognizer.record(source)
+
+    try:
+        recognized_text = recognizer.recognize_google(audio_data, language="en")
+        logging.info(f"[check_voice_answer] Chat {chat_id}: Recognized text: {recognized_text}")
+    except sr.UnknownValueError:
+        bot.send_message(chat_id, "🚫 Ошибка: Не удалось распознать речь. Попробуйте еще раз.")
+        os.remove(wav_path)
+        return
+    except sr.RequestError as e:
+        logging.error(f"[check_voice_answer] Chat {chat_id}: Speech Recognition API error - {e}")
+        bot.send_message(chat_id, "⚠ Ошибка сервиса распознавания речи. Попробуйте позже.")
+        os.remove(wav_path)
+        return
+
+    # Эталонный текст для сравнения
+    reference_text = session["question_text"] if session.get("is_reading_task") else session["correct_answer"]
+    
+    # Подсчет текстового совпадения
+    text_similarity = SequenceMatcher(None, recognized_text.lower(), reference_text.lower()).ratio()
+    text_score = round(text_similarity * 50)  # До 50 баллов за текстовое совпадение
+
+    # Генерация TTS для эталона
     try:
         if session.get("is_reading_task"):
             tts_file = "reference_tts.wav"
-            tts = gTTS(session["question_text"], lang="en")
+            tts = gTTS(reference_text, lang="en")
             tts.save(tts_file)
         else:
-            tts_file = speak_text(session["correct_answer"])
+            tts_file = speak_text(reference_text)
         
         logging.info(f"[check_voice_answer] Chat {chat_id}: TTS file generated {tts_file}")
-        
-        final_score = evaluate_speaking(wav_path, tts_file)
-        logging.info(f"[check_voice_answer] Chat {chat_id}: Evaluation completed with score {final_score}")
-        
+
+        # Аудио-анализ (оставшиеся 50 баллов)
+        audio_score = evaluate_speaking(wav_path, tts_file)
+        final_score = text_score + round(audio_score / 2)
+
+        logging.info(f"[check_voice_answer] Chat {chat_id}: Final score = {final_score}")
+
         bot.send_message(chat_id, f"🎯 Точность речи: {final_score}%")
-        
+
         if session.get("is_speaking_task"):
             bot.send_audio(chat_id, open(wav_path, "rb"))
-        
+
     except Exception as e:
         logging.error(f"[check_voice_answer] Chat {chat_id}: Error processing voice input - {e}")
-    
+
     finally:
         os.remove(wav_path)
         logging.info(f"[check_voice_answer] Chat {chat_id}: Removed temporary file {wav_path}")
-
     
 def process_audio(audio_path):
     """Обрабатывает аудиофайл: удаляет тишину и нормализует громкость."""
