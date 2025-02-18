@@ -502,40 +502,37 @@ def analyze_fluency(audio_path):
         return 0
 
 
-
 def analyze_prosody(user_audio, reference_audio):
     """Анализирует мелодику речи, используя динамическую временную нормализацию (DTW)."""
     try:
         user_pitch = analyze_pitch(user_audio)
         ref_pitch = analyze_pitch(reference_audio)
 
+        logging.debug(f"[analyze_prosody] Raw user_pitch: {user_pitch}")
+        logging.debug(f"[analyze_prosody] Raw ref_pitch: {ref_pitch}")
+
         if user_pitch is None or ref_pitch is None:
             logging.error("[analyze_prosody] Error: One of the pitch values is None")
             return 0
 
-        # Приводим массивы к float64 и гарантируем, что они 1D
+        # Приводим одиночное число к массиву
+        if isinstance(user_pitch, (int, float)):
+            user_pitch = np.array([user_pitch], dtype=np.float64)
+        if isinstance(ref_pitch, (int, float)):
+            ref_pitch = np.array([ref_pitch], dtype=np.float64)
 
-        user_pitch = np.array(user_pitch, dtype=np.float64).reshape(-1)
-        ref_pitch = np.array(ref_pitch, dtype=np.float64).reshape(-1)
+        logging.debug(f"[analyze_prosody] Processed user_pitch type: {type(user_pitch)}, value: {user_pitch}")
+        logging.debug(f"[analyze_prosody] Processed ref_pitch type: {type(ref_pitch)}, value: {ref_pitch}")
 
-        if user_pitch.ndim != 1 or ref_pitch.ndim != 1:
-            logging.error(f"[analyze_prosody] Error: Pitch arrays are not 1D! user_pitch.shape={user_pitch.shape}, ref_pitch.shape={ref_pitch.shape}")
+        if not isinstance(user_pitch, (list, np.ndarray)) or not isinstance(ref_pitch, (list, np.ndarray)):
+            logging.error("[analyze_prosody] Error: Pitch data is not a list or array")
             return 0
+
+        user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
+        ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
 
         if user_pitch.size == 0 or ref_pitch.size == 0:
-            logging.error("[analyze_prosody] Error: One of the pitch arrays is empty")
-            return 0
-
-        # Приводим массивы к одинаковой длине
-        target_length = max(len(user_pitch), len(ref_pitch))
-        user_pitch = resample_pitch(user_pitch, target_length)
-        ref_pitch = resample_pitch(ref_pitch, target_length)
-
-        logging.debug(f"[analyze_prosody] Final shapes: user_pitch={user_pitch.shape}, ref_pitch={ref_pitch.shape}")
-
-        # Проверяем, что после ресэмплинга массивы все еще 1D
-        if user_pitch.ndim != 1 or ref_pitch.ndim != 1:
-            logging.error(f"[analyze_prosody] Error: After resampling, arrays are not 1D! user_pitch.shape={user_pitch.shape}, ref_pitch.shape={ref_pitch.shape}")
+            logging.error("[analyze_prosody] Error: One of the pitch arrays is empty after processing")
             return 0
 
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
@@ -544,81 +541,27 @@ def analyze_prosody(user_audio, reference_audio):
         logging.debug(f"[analyze_prosody] Calculated prosody_score: {prosody_score}")
         return prosody_score
     except Exception as e:
-        logging.error(f"[analyze_prosody] Error: {e}", exc_info=True)
+        logging.error(f"[analyze_prosody] Error: {e}")
         return 0
 
 
-
-def resample_pitch(pitch, target_length):
-    """Интерполирует массив pitch до заданной длины, приводя его к 1D."""
-    if pitch is None or len(pitch) == 0:
-        logging.error("[resample_pitch] Error: Empty or None pitch array")
-        return np.zeros(target_length, dtype=np.float64)  # Возвращаем массив нулей
-
-    pitch = np.array(pitch, dtype=np.float64).reshape(-1)
-
-    if pitch.ndim != 1:
-        logging.error(f"[resample_pitch] Error: pitch is not 1D! shape={pitch.shape}")
-        return np.zeros(target_length, dtype=np.float64)
-
-    if len(pitch) == target_length:
-        return pitch  # Уже правильная длина
-
-    x_old = np.linspace(0, 1, len(pitch))
-    x_new = np.linspace(0, 1, target_length)
-
-    interpolator = interp1d(x_old, pitch, kind='linear', fill_value="extrapolate")
-    resampled_pitch = interpolator(x_new)
-
-    resampled_pitch = np.array(resampled_pitch, dtype=np.float64).reshape(-1)
-
-    if resampled_pitch.ndim != 1:
-        logging.error(f"[resample_pitch] Error: After resampling, array is not 1D! shape={resampled_pitch.shape}")
-        return np.zeros(target_length, dtype=np.float64)
-
-    return resampled_pitch
-
-
 def evaluate_speaking(user_audio, reference_audio):
-    """Оценивает произношение по высоте тона, просодии и распознаванию речи."""
+    """Оценивает произношение по высоте тона и просодии."""
     user_audio = process_audio(user_audio)
     reference_audio = process_audio(reference_audio)
     
     pitch_score = analyze_pitch(user_audio)
     reference_pitch = analyze_pitch(reference_audio)
-
+    
     if pitch_score is None or reference_pitch is None:
         return 0
-
-    # Выравниваем длины массивов
-    pitch_score, reference_pitch = match_length(pitch_score, reference_pitch)
-
-    # Преобразуем массивы в скаляры (например, среднее значение)
-    pitch_score = np.mean(pitch_score) if isinstance(pitch_score, (list, np.ndarray)) else pitch_score
-    reference_pitch = np.mean(reference_pitch) if isinstance(reference_pitch, (list, np.ndarray)) else reference_pitch
-
-    # Теперь pitch_score и reference_pitch - числа, можно безопасно вычитать
+    
     pitch_difference = abs(pitch_score - reference_pitch)
     pitch_final_score = max(0, 100 - (pitch_difference ** 0.8) * 3)
-
-    # Анализ просодии
+    
     prosody_score = analyze_prosody(user_audio, reference_audio)
-
-    # Распознавание речи
-    recognizer = sr.Recognizer()
-    try:
-        with sr.AudioFile(user_audio) as source:
-            user_audio_text = recognizer.recognize_google(recognizer.record(source))
-        with sr.AudioFile(reference_audio) as source:
-            ref_audio_text = recognizer.recognize_google(recognizer.record(source))
-        text_match_score = 100 if user_audio_text == ref_audio_text else 50  # Простая логика сравнения
-    except Exception as e:
-        logging.error(f"[evaluate_speaking] Speech recognition error: {e}")
-        text_match_score = 0
-
-    # Итоговый балл (комбинация оценок)
-    final_score = round((pitch_final_score * 0.3) + (prosody_score * 0.3) + (text_match_score * 0.4), 2)
-
+    
+    final_score = round((pitch_final_score * 0.5) + (prosody_score * 0.5), 2)
     return final_score
 def convert_to_wav(audio_file):
     if not os.path.exists(audio_file):
@@ -634,9 +577,8 @@ def convert_to_wav(audio_file):
         logging.error(f"[convert_to_wav] Error processing {audio_file}: {e}")
         return None
 
-
 def analyze_pitch(audio_file):
-    """Извлекает массив высоты тона из аудиофайла."""
+    """Извлекает среднюю высоту тона из аудиофайла."""
     try:
         logging.debug(f"[analyze_pitch] Received audio file: {audio_file}")
 
@@ -662,22 +604,12 @@ def analyze_pitch(audio_file):
         sound = parselmouth.Sound(audio_file)
         pitch = sound.to_pitch()
         pitch_values = pitch.selected_array['frequency']
+        pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
         
-        # Убираем нули и NaN
-        pitch_values = pitch_values[np.isfinite(pitch_values) & (pitch_values > 0)]
+        mean_pitch = np.mean(pitch_values) if len(pitch_values) > 0 else None
+        logging.debug(f"[analyze_pitch] Mean pitch: {mean_pitch}")
 
-        if pitch_values.size == 0:
-            logging.error("[analyze_pitch] Error: No valid pitch values found after filtering")
-            return None
-
-        # Приводим массив к 1D
-        pitch_values = np.array(pitch_values, dtype=np.float64).reshape(-1)
-
-        
-        logging.debug(f"[analyze_pitch] Extracted pitch values (size={pitch_values.size}): {pitch_values[:10]}...")
-
-        return pitch_values
-
+        return mean_pitch
     except Exception as e:
         logging.error(f"[analyze_pitch] Error: {e}", exc_info=True)
         return None
@@ -737,14 +669,7 @@ def check_voice_answer(message):
     finally:
         os.remove(wav_path)
         logging.info(f"[check_voice_answer] Chat {chat_id}: Removed temporary file {wav_path}")
-def match_length(arr1, arr2):
-    """Дополняет массивы нулями до одинаковой длины."""
-    max_length = max(len(arr1), len(arr2))
-    
-    arr1 = np.pad(arr1, (0, max_length - len(arr1)), mode='constant', constant_values=0)
-    arr2 = np.pad(arr2, (0, max_length - len(arr2)), mode='constant', constant_values=0)
-    
-    return arr1, arr2
+
     
 def process_audio(audio_path):
     """Обрабатывает аудиофайл: удаляет тишину и нормализует громкость."""
