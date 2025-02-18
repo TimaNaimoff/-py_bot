@@ -547,6 +547,7 @@ def resample_pitch(pitch, target_length):
     interpolator = interp1d(x_old, pitch, kind='linear', fill_value="extrapolate")
     return interpolator(x_new)
 
+
 def evaluate_speaking(user_audio, reference_audio):
     """Оценивает произношение по высоте тона, просодии и распознаванию речи."""
     user_audio = process_audio(user_audio)
@@ -554,28 +555,39 @@ def evaluate_speaking(user_audio, reference_audio):
     
     pitch_score = analyze_pitch(user_audio)
     reference_pitch = analyze_pitch(reference_audio)
-    
+
     if pitch_score is None or reference_pitch is None:
         return 0
-    pitch_score, reference_pitch = match_length(pitch_score, pitch_score)
 
+    # Выравниваем длины массивов
+    pitch_score, reference_pitch = match_length(pitch_score, reference_pitch)
+
+    # Преобразуем массивы в скаляры (например, среднее значение)
+    pitch_score = np.mean(pitch_score) if isinstance(pitch_score, (list, np.ndarray)) else pitch_score
+    reference_pitch = np.mean(reference_pitch) if isinstance(reference_pitch, (list, np.ndarray)) else reference_pitch
+
+    # Теперь pitch_score и reference_pitch - числа, можно безопасно вычитать
     pitch_difference = abs(pitch_score - reference_pitch)
     pitch_final_score = max(0, 100 - (pitch_difference ** 0.8) * 3)
-    
+
+    # Анализ просодии
     prosody_score = analyze_prosody(user_audio, reference_audio)
-    
+
+    # Распознавание речи
     recognizer = sr.Recognizer()
     try:
         with sr.AudioFile(user_audio) as source:
             user_audio_text = recognizer.recognize_google(recognizer.record(source))
         with sr.AudioFile(reference_audio) as source:
             ref_audio_text = recognizer.recognize_google(recognizer.record(source))
-        text_match_score = 100 if user_audio_text == ref_audio_text else 50  # Простая логика
+        text_match_score = 100 if user_audio_text == ref_audio_text else 50  # Простая логика сравнения
     except Exception as e:
         logging.error(f"[evaluate_speaking] Speech recognition error: {e}")
         text_match_score = 0
-    
+
+    # Итоговый балл (комбинация оценок)
     final_score = round((pitch_final_score * 0.3) + (prosody_score * 0.3) + (text_match_score * 0.4), 2)
+
     return final_score
 def convert_to_wav(audio_file):
     if not os.path.exists(audio_file):
