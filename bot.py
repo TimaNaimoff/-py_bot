@@ -546,7 +546,7 @@ def analyze_prosody(user_audio, reference_audio):
 
 
 def evaluate_speaking(user_audio, reference_audio):
-    """Оценивает произношение по высоте тона и просодии."""
+    """Оценивает произношение по высоте тона, просодии и распознаванию речи."""
     user_audio = process_audio(user_audio)
     reference_audio = process_audio(reference_audio)
     
@@ -561,9 +561,19 @@ def evaluate_speaking(user_audio, reference_audio):
     
     prosody_score = analyze_prosody(user_audio, reference_audio)
     
-    final_score = round((pitch_final_score * 0.5) + (prosody_score * 0.5), 2)
-    return final_score
-def convert_to_wav(audio_file):
+    recognizer = sr.Recognizer()
+    try:
+        with sr.AudioFile(user_audio) as source:
+            user_audio_text = recognizer.recognize_google(recognizer.record(source))
+        with sr.AudioFile(reference_audio) as source:
+            ref_audio_text = recognizer.recognize_google(recognizer.record(source))
+        text_match_score = 100 if user_audio_text == ref_audio_text else 50  # Простая логика
+    except Exception as e:
+        logging.error(f"[evaluate_speaking] Speech recognition error: {e}")
+        text_match_score = 0
+    
+    final_score = round((pitch_final_score * 0.3) + (prosody_score * 0.3) + (text_match_score * 0.4), 2)
+    return final_scoredef convert_to_wav(audio_file):
     if not os.path.exists(audio_file):
         logging.error(f"[convert_to_wav] Error: File {audio_file} not found.")
         return None
