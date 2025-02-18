@@ -502,11 +502,6 @@ def analyze_fluency(audio_path):
         return 0
 
 
-import numpy as np
-import logging
-from fastdtw import fastdtw
-from scipy.spatial.distance import euclidean
-from scipy.interpolate import interp1d
 
 def analyze_prosody(user_audio, reference_audio):
     """Анализирует мелодику речи, используя динамическую временную нормализацию (DTW)."""
@@ -562,7 +557,8 @@ def evaluate_speaking(user_audio, reference_audio):
     
     if pitch_score is None or reference_pitch is None:
         return 0
-    
+    pitch_score, reference_pitch = match_length(pitch_score, pitch_score)
+
     pitch_difference = abs(pitch_score - reference_pitch)
     pitch_final_score = max(0, 100 - (pitch_difference ** 0.8) * 3)
     
@@ -690,7 +686,14 @@ def check_voice_answer(message):
     finally:
         os.remove(wav_path)
         logging.info(f"[check_voice_answer] Chat {chat_id}: Removed temporary file {wav_path}")
-
+def match_length(arr1, arr2):
+    """Дополняет массивы нулями до одинаковой длины."""
+    max_length = max(len(arr1), len(arr2))
+    
+    arr1 = np.pad(arr1, (0, max_length - len(arr1)), mode='constant', constant_values=0)
+    arr2 = np.pad(arr2, (0, max_length - len(arr2)), mode='constant', constant_values=0)
+    
+    return arr1, arr2
     
 def process_audio(audio_path):
     """Обрабатывает аудиофайл: удаляет тишину и нормализует громкость."""
