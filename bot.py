@@ -513,47 +513,43 @@ def analyze_fluency(audio_path):
 def analyze_prosody(user_audio, reference_audio):
     """Анализирует мелодику речи, используя динамическую временную нормализацию (DTW)."""
     try:
-        user_pitch = analyze_pitch_2(user_audio)
-        ref_pitch = analyze_pitch_2(reference_audio)
+        user_pitch = analyze_pitch(user_audio)
+        ref_pitch = analyze_pitch(reference_audio)
 
-        logging.debug(f"[analyze_prosody] Raw user_pitch: {user_pitch}")
-        logging.debug(f"[analyze_prosody] Raw ref_pitch: {ref_pitch}")
+        logging.info(f"user_pitch: {user_pitch}")
+        logging.info(f"ref_pitch: {ref_pitch}")
 
         if user_pitch is None or ref_pitch is None:
             logging.error("[analyze_prosody] Error: One of the pitch values is None")
             return 0
 
-        # Приводим одиночное число к массиву
-        if isinstance(user_pitch, (int, float)):
-            user_pitch = np.array([user_pitch], dtype=np.float64)
-        if isinstance(ref_pitch, (int, float)):
-            ref_pitch = np.array([ref_pitch], dtype=np.float64)
-
-        logging.debug(f"[analyze_prosody] Processed user_pitch type: {type(user_pitch)}, value: {user_pitch}")
-        logging.debug(f"[analyze_prosody] Processed ref_pitch type: {type(ref_pitch)}, value: {ref_pitch}")
-
-        if not isinstance(user_pitch, (list, np.ndarray)) or not isinstance(ref_pitch, (list, np.ndarray)):
-            logging.error("[analyze_prosody] Error: Pitch data is not a list or array")
-            return 0
-
         user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
         ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
 
-        if user_pitch.size == 0 or ref_pitch.size == 0:
-            logging.error("[analyze_prosody] Error: One of the pitch arrays is empty after processing")
-            return 0
-        logging.info(f"user_pitch: {user_pitch}")
-        logging.info(f"ref_pitch: {ref_pitch}")
+        # Приведение к одинаковой длине
+        min_length = min(len(user_pitch), len(ref_pitch))
+        user_pitch = match_pitch_length(user_pitch, min_length)
+        ref_pitch = match_pitch_length(ref_pitch, min_length)
 
-        distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
-        prosody_score = max(0, 100 - distance * 0.1)
+        logging.info(f"Resized user_pitch: {user_pitch}")
+        logging.info(f"Resized ref_pitch: {ref_pitch}")
 
-        logging.debug(f"[analyze_prosody] Calculated prosody_score: {prosody_score}")
-        return prosody_score
+        # Теперь можно использовать DTW или другое сравнение
+        return evaluate_pitch_similarity(user_pitch, ref_pitch)
     except Exception as e:
-        logging.error(f"[analyze_prosody] Error: {e}")
+        logging.error(f"[analyze_prosody] Error: {e}", exc_info=True)
         return 0
 
+def match_pitch_length(pitch_array, target_length):
+    """Растягивает или сжимает массив pitch_array до target_length"""
+    if len(pitch_array) == target_length:
+        return pitch_array  # Уже нужной длины
+    
+    x_old = np.linspace(0, 1, len(pitch_array))
+    x_new = np.linspace(0, 1, target_length)
+    
+    interpolator = interp1d(x_old, pitch_array, kind="linear", fill_value="extrapolate")
+    return interpolator(x_new)
 
 def evaluate_speaking(user_audio, reference_audio):
     """Оценивает произношение по высоте тона и просодии."""
