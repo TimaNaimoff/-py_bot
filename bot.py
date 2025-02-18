@@ -514,35 +514,37 @@ def analyze_prosody(user_audio, reference_audio):
             logging.error("[analyze_prosody] Error: One of the pitch arrays is None")
             return 0
 
-        logging.debug(f"[analyze_prosody] user_pitch type: {type(user_pitch)}, value: {user_pitch}")
-        logging.debug(f"[analyze_prosody] ref_pitch type: {type(ref_pitch)}, value: {ref_pitch}")
-
-        if not isinstance(user_pitch, (list, np.ndarray)) or not isinstance(ref_pitch, (list, np.ndarray)):
-            logging.error("[analyze_prosody] Error: Pitch data is not a list or array")
-            return 0
-
-        user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
-        ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
-
-        if user_pitch.size == 0 or ref_pitch.size == 0:
-            logging.error("[analyze_prosody] Error: One of the pitch arrays is empty after processing")
-            return 0
-        
-        distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
+        distance, _ = fastdtw([user_pitch], [ref_pitch], dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
         
         return prosody_score
     except Exception as e:
         logging.error(f"[analyze_prosody] Error: {e}")
         return 0
+def analyze_text_similarity(user_audio, reference_audio):
+    """Оценивает текстовое совпадение с использованием распознавания речи."""
+    try:
+        recognizer = sr.Recognizer()
+        
+        with sr.AudioFile(user_audio) as source:
+            audio_data = recognizer.record(source)
+            user_text = recognizer.recognize_google(audio_data)
+        
+        with sr.AudioFile(reference_audio) as source:
+            audio_data = recognizer.record(source)
+            reference_text = recognizer.recognize_google(audio_data)
+        
+        match_score = 100 if user_text.lower() == reference_text.lower() else 0  # Можно улучшить с помощью NLP
+        return match_score
+    except Exception as e:
+        logging.error(f"[analyze_text_similarity] Speech recognition error: {e}")
+        return 0
+        
 def analyze_phonetic_accuracy(user_audio, reference_audio):
     """Оценивает фонетическую точность речи с использованием MFCC и DTW."""
     try:
-        user_mfcc, _ = librosa.load(user_audio, sr=16000)
-        ref_mfcc, _ = librosa.load(reference_audio, sr=16000)
-        
-        user_mfcc = librosa.feature.mfcc(y=user_mfcc, sr=16000, n_mfcc=13)
-        ref_mfcc = librosa.feature.mfcc(y=ref_mfcc, sr=16000, n_mfcc=13)
+        user_mfcc = librosa.feature.mfcc(y=librosa.load(user_audio, sr=16000)[0], sr=16000, n_mfcc=13)
+        ref_mfcc = librosa.feature.mfcc(y=librosa.load(reference_audio, sr=16000)[0], sr=16000, n_mfcc=13)
         
         distance, _ = fastdtw(user_mfcc.T, ref_mfcc.T, dist=euclidean)
         phonetic_accuracy_score = max(0, 100 - distance * 0.1)
@@ -551,13 +553,15 @@ def analyze_phonetic_accuracy(user_audio, reference_audio):
     except Exception as e:
         logging.error(f"[analyze_phonetic_accuracy] Error: {e}")
         return 0
+        
+        return phonetic_accuracy_score
+    except Exception as e:
+        logging.error(f"[analyze_phonetic_accuracy] Error: {e}")
+        return 0
 
 
 def evaluate_speaking(user_audio, reference_audio):
-    """Оценивает произношение по высоте тона, просодии и распознаванию речи."""
-    user_audio = process_audio(user_audio)
-    reference_audio = process_audio(reference_audio)
-    
+    """Оценивает произношение по высоте тона, просодии, текстовому совпадению и фонетической точности."""
     pitch_score = analyze_pitch(user_audio)
     reference_pitch = analyze_pitch(reference_audio)
     
@@ -568,21 +572,10 @@ def evaluate_speaking(user_audio, reference_audio):
     pitch_final_score = max(0, 100 - (pitch_difference ** 0.8) * 3)
     
     prosody_score = analyze_prosody(user_audio, reference_audio)
-    
-    recognizer = sr.Recognizer()
-    try:
-        with sr.AudioFile(user_audio) as source:
-            user_audio_text = recognizer.recognize_google(recognizer.record(source))
-        with sr.AudioFile(reference_audio) as source:
-            ref_audio_text = recognizer.recognize_google(recognizer.record(source))
-        text_match_score = 100 if user_audio_text == ref_audio_text else 50  # Простая логика
-    except Exception as e:
-        logging.error(f"[evaluate_speaking] Speech recognition error: {e}")
-        text_match_score = 0
+    text_match_score = analyze_text_similarity(user_audio, reference_audio)
     phonetic_accuracy_score = analyze_phonetic_accuracy(user_audio, reference_audio)
-
+    
     final_score = round((text_match_score * 0.3) + (pitch_final_score * 0.2) + (prosody_score * 0.3) + (phonetic_accuracy_score * 0.2), 2)
-
     return final_score
 def convert_to_wav(audio_file):
     if not os.path.exists(audio_file):
@@ -601,40 +594,22 @@ def convert_to_wav(audio_file):
 def analyze_pitch(audio_file):
     """Извлекает среднюю высоту тона из аудиофайла."""
     try:
-        logging.debug(f"[analyze_pitch] Received audio file: {audio_file}")
-
         if not audio_file:
             logging.error("[analyze_pitch] Error: audio_file is None")
             return None
-
-        if not os.path.exists(audio_file):
-            logging.error(f"[analyze_pitch] Error: File not found: {audio_file}")
-            return None
-
-        if not check_audio_validity(audio_file):
-            logging.error(f"[analyze_pitch] Error: Invalid audio file: {audio_file}")
-            return None
-
-        audio_file = convert_to_wav(audio_file)
-        logging.debug(f"[analyze_pitch] Converted audio file: {audio_file}")
-
-        if not audio_file or not os.path.exists(audio_file):
-            logging.error("[analyze_pitch] Error: convert_to_wav returned None or file does not exist")
-            return None
-
-        sound = parselmouth.Sound(audio_file)
-        pitch = sound.to_pitch()
-        pitch_values = pitch.selected_array['frequency']
-        pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
         
-        mean_pitch = np.mean(pitch_values) if len(pitch_values) > 0 else None
-        logging.debug(f"[analyze_pitch] Mean pitch: {mean_pitch}")
+        y, sr = librosa.load(audio_file, sr=16000)
+        pitch_values, _ = librosa.piptrack(y=y, sr=sr)
+        pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
 
-        return mean_pitch
+        if len(pitch_values) == 0:
+            logging.error("[analyze_pitch] Error: No pitch values found")
+            return None
+        
+        return np.mean(pitch_values)
     except Exception as e:
-        logging.error(f"[analyze_pitch] Error: {e}", exc_info=True)
+        logging.error(f"[analyze_pitch] Error: {e}")
         return None
-
 
 
 
