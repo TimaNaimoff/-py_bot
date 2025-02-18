@@ -575,8 +575,9 @@ def convert_to_wav(audio_file):
         logging.error(f"[convert_to_wav] Error processing {audio_file}: {e}")
         return None
 
+
 def analyze_pitch(audio_file):
-    """Извлекает среднюю высоту тона из аудиофайла."""
+    """Извлекает массив высоты тона из аудиофайла."""
     try:
         logging.debug(f"[analyze_pitch] Received audio file: {audio_file}")
 
@@ -603,11 +604,13 @@ def analyze_pitch(audio_file):
         pitch = sound.to_pitch()
         pitch_values = pitch.selected_array['frequency']
         pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
-        
-        mean_pitch = np.mean(pitch_values) if len(pitch_values) > 0 else None
-        logging.debug(f"[analyze_pitch] Mean pitch: {mean_pitch}")
 
-        return mean_pitch
+        if pitch_values.size == 0:
+            logging.error("[analyze_pitch] Error: No valid pitch values found")
+            return None
+
+        logging.debug(f"[analyze_pitch] Extracted pitch values: {pitch_values.shape}")
+        return pitch_values
     except Exception as e:
         logging.error(f"[analyze_pitch] Error: {e}", exc_info=True)
         return None
