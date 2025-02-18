@@ -527,15 +527,18 @@ def analyze_prosody(user_audio, reference_audio):
         ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
 
         # Приведение к одинаковой длине
-        min_length = min(len(user_pitch), len(ref_pitch))
+        min_length = max(len(user_pitch), len(ref_pitch))
         user_pitch = match_pitch_length(user_pitch, min_length)
         ref_pitch = match_pitch_length(ref_pitch, min_length)
 
-        logging.info(f"Resized user_pitch: {user_pitch}")
-        logging.info(f"Resized ref_pitch: {ref_pitch}")
+        logging.info(f"user_pitch: {user_pitch}")
+        logging.info(f"ref_pitch: {ref_pitch}")
 
-        # Теперь можно использовать DTW или другое сравнение
-        return evaluate_pitch_similarity(user_pitch, ref_pitch)
+        distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
+        prosody_score = max(0, 100 - distance * 0.1)
+
+        logging.debug(f"[analyze_prosody] Calculated prosody_score: {prosody_score}")
+        return prosody_score
     except Exception as e:
         logging.error(f"[analyze_prosody] Error: {e}", exc_info=True)
         return 0
