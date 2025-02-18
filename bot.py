@@ -21,6 +21,7 @@ from scipy.spatial.distance import euclidean
 from fastdtw import fastdtw
 import soundfile as sf
 import speech_recognition as sr
+import librosa
 
 app = Flask(__name__)
 
