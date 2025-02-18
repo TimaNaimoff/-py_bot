@@ -502,6 +502,12 @@ def analyze_fluency(audio_path):
         return 0
 
 
+import numpy as np
+import logging
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
+from scipy.interpolate import interp1d
+
 def analyze_prosody(user_audio, reference_audio):
     """Анализирует мелодику речи, используя динамическую временную нормализацию (DTW)."""
     try:
@@ -522,6 +528,14 @@ def analyze_prosody(user_audio, reference_audio):
         if user_pitch.size == 0 or ref_pitch.size == 0:
             logging.error("[analyze_prosody] Error: One of the pitch arrays is empty")
             return 0
+
+        # Делаем массивы одинаковой длины с интерполяцией
+        min_length = min(len(user_pitch), len(ref_pitch))
+        user_interp = interp1d(np.linspace(0, 1, len(user_pitch)), user_pitch, kind='linear')
+        ref_interp = interp1d(np.linspace(0, 1, len(ref_pitch)), ref_pitch, kind='linear')
+
+        user_pitch = user_interp(np.linspace(0, 1, min_length))
+        ref_pitch = ref_interp(np.linspace(0, 1, min_length))
 
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
