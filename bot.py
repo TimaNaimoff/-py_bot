@@ -537,23 +537,45 @@ def evaluate_speaking(user_audio, reference_audio):
     
     final_score = round((pitch_final_score * 0.5) + (prosody_score * 0.5), 2)
     return final_score
+def convert_to_wav(audio_file):
+    if not os.path.exists(audio_file):
+        logging.error(f"[convert_to_wav] Error: File {audio_file} not found.")
+        return None
+
+    try:
+        wav_file = f"converted_{os.path.basename(audio_file)}"
+        sound = AudioSegment.from_file(audio_file)
+        sound.export(wav_file, format="wav")
+        return wav_file
+    except Exception as e:
+        logging.error(f"[convert_to_wav] Error processing {audio_file}: {e}")
+        return None
 
 def analyze_pitch(audio_file):
     """Извлекает среднюю высоту тона из аудиофайла."""
     try:
-        if not check_audio_validity(audio_file):
+        if not audio_file:
+            logging.error("[analyze_pitch] Error: audio_file is None")
             return None
         
+        if not check_audio_validity(audio_file):
+            return None
+
         audio_file = convert_to_wav(audio_file)  # Принудительная конвертация
+        if not audio_file:
+            logging.error("[analyze_pitch] Error: convert_to_wav returned None")
+            return None
+
         sound = parselmouth.Sound(audio_file)
         pitch = sound.to_pitch()
         pitch_values = pitch.selected_array['frequency']
         pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
-        
+
         return np.mean(pitch_values) if len(pitch_values) > 0 else None
     except Exception as e:
         logging.error(f"[analyze_pitch] Error: {e}")
         return None
+
 
 
 
