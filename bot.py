@@ -523,11 +523,11 @@ def analyze_prosody(user_audio, reference_audio):
             logging.error("[analyze_prosody] Error: One of the pitch values is None")
             return 0
 
-        user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
-        ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
+        #user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
+        #ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
 
         # Приведение к одинаковой длине
-        min_length = max(len(user_pitch), len(ref_pitch))
+        min_length = min(len(user_pitch), len(ref_pitch))
         user_pitch = match_pitch_length(user_pitch, min_length)
         ref_pitch = match_pitch_length(ref_pitch, min_length)
 
