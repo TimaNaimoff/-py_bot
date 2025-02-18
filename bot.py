@@ -546,8 +546,20 @@ def analyze_prosody(user_audio, reference_audio):
         logging.error(f"[analyze_prosody] Error: {e}", exc_info=True)
         return 0
 
+
+
 def resample_pitch(pitch, target_length):
-    """Интерполирует массив pitch до заданной длины."""
+    """Интерполирует массив pitch до заданной длины, приводя его к 1D."""
+    if pitch is None or len(pitch) == 0:
+        logging.error("[resample_pitch] Error: Empty or None pitch array")
+        return np.zeros(target_length, dtype=np.float64)  # Возвращаем массив нулей
+
+    pitch = np.array(pitch, dtype=np.float64).flatten()
+
+    if pitch.ndim != 1:
+        logging.error(f"[resample_pitch] Error: pitch is not 1D! shape={pitch.shape}")
+        return np.zeros(target_length, dtype=np.float64)
+
     if len(pitch) == target_length:
         return pitch  # Уже правильная длина
 
@@ -555,7 +567,15 @@ def resample_pitch(pitch, target_length):
     x_new = np.linspace(0, 1, target_length)
 
     interpolator = interp1d(x_old, pitch, kind='linear', fill_value="extrapolate")
-    return interpolator(x_new)
+    resampled_pitch = interpolator(x_new)
+
+    resampled_pitch = np.array(resampled_pitch, dtype=np.float64).flatten()
+
+    if resampled_pitch.ndim != 1:
+        logging.error(f"[resample_pitch] Error: After resampling, array is not 1D! shape={resampled_pitch.shape}")
+        return np.zeros(target_length, dtype=np.float64)
+
+    return resampled_pitch
 
 
 def evaluate_speaking(user_audio, reference_audio):
