@@ -513,8 +513,8 @@ def analyze_fluency(audio_path):
 def analyze_prosody(user_audio, reference_audio):
     """Анализирует мелодику речи, используя динамическую временную нормализацию (DTW)."""
     try:
-        user_pitch = analyze_pitch(user_audio)
-        ref_pitch = analyze_pitch(reference_audio)
+        user_pitch = analyze_pitch_2(user_audio)
+        ref_pitch = analyze_pitch_2(reference_audio)
 
         logging.debug(f"[analyze_prosody] Raw user_pitch: {user_pitch}")
         logging.debug(f"[analyze_prosody] Raw ref_pitch: {ref_pitch}")
@@ -624,6 +624,30 @@ def analyze_pitch(audio_file):
         logging.error(f"[analyze_pitch] Error: {e}", exc_info=True)
         return None
 
+def analyze_pitch_2(audio_file):
+    """Извлекает последовательность высот тона из аудиофайла."""
+    try:
+        logging.debug(f"[analyze_pitch] Received audio file: {audio_file}")
+
+        if not audio_file or not os.path.exists(audio_file):
+            logging.error(f"[analyze_pitch] Error: Invalid or missing file: {audio_file}")
+            return None
+
+        sound = parselmouth.Sound(audio_file)
+        pitch = sound.to_pitch()
+        pitch_values = pitch.selected_array['frequency']
+        pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
+
+        if len(pitch_values) == 0:
+            logging.warning("[analyze_pitch_2] No valid pitch values detected.")
+            return None
+
+        logging.debug(f"[analyze_pitch_2] Extracted pitch values: {pitch_values}")
+
+        return pitch_values  # Возвращаем массив значений, а не среднее
+    except Exception as e:
+        logging.error(f"[analyze_pitch_2] Error: {e}", exc_info=True)
+        return None
 
 
 
