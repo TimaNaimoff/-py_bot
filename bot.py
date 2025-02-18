@@ -638,14 +638,21 @@ def analyze_pitch(audio_file):
         sound = parselmouth.Sound(audio_file)
         pitch = sound.to_pitch()
         pitch_values = pitch.selected_array['frequency']
-        pitch_values = pitch_values[pitch_values > 0]  # Исключаем нули
+        
+        # Убираем нули и NaN
+        pitch_values = pitch_values[np.isfinite(pitch_values) & (pitch_values > 0)]
 
         if pitch_values.size == 0:
-            logging.error("[analyze_pitch] Error: No valid pitch values found")
+            logging.error("[analyze_pitch] Error: No valid pitch values found after filtering")
             return None
 
-        logging.debug(f"[analyze_pitch] Extracted pitch values: {pitch_values.shape}")
+        # Приводим массив к 1D
+        pitch_values = np.array(pitch_values, dtype=np.float64).flatten()
+        
+        logging.debug(f"[analyze_pitch] Extracted pitch values (size={pitch_values.size}): {pitch_values[:10]}...")
+
         return pitch_values
+
     except Exception as e:
         logging.error(f"[analyze_pitch] Error: {e}", exc_info=True)
         return None
