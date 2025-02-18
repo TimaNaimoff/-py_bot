@@ -363,50 +363,44 @@ def match_audio_length(user_audio, reference_audio):
         min_duration = min(user_sound.get_total_duration(), reference_sound.get_total_duration())
         logging.debug(f"Matching audio length to {min_duration} seconds")
         
-        user_sound = user_sound.extract_part(from_time=0, to_time=min_duration)
-        reference_sound = reference_sound.extract_part(from_time=0, to_time=min_duration)
-        
-        return user_sound, reference_sound
+        return user_sound.extract_part(0, min_duration), reference_sound.extract_part(0, min_duration)
     except Exception as e:
         logging.error(f"[match_audio_length] Error: {e}")
         return None, None
 
+
 def remove_silence(audio_path):
     try:
-        logging.debug(f"Processing {audio_path} for silence removal")
         sound = AudioSegment.from_file(audio_path)
         non_silent_chunks = silence.detect_nonsilent(sound, silence_thresh=-40, min_silence_len=200)
-        
         if not non_silent_chunks:
             return audio_path
         
         start_trim, end_trim = non_silent_chunks[0][0], non_silent_chunks[-1][1]
-        trimmed_sound = sound[max(0, start_trim - 100):min(len(sound), end_trim + 100)]
+        trimmed_sound = sound[start_trim:end_trim]
         
-        trimmed_path = "trimmed_" + os.path.basename(audio_path)
+        trimmed_path = f"trimmed_{os.path.basename(audio_path)}"
         trimmed_sound.export(trimmed_path, format="wav")
-        logging.debug(f"Trimmed audio saved to {trimmed_path}")
         return trimmed_path
     except Exception as e:
         logging.error(f"[remove_silence] Error: {e}")
         return audio_path
 
 
-def normalize_audio(audio_path):
+ef normalize_audio(audio_path):
     try:
-        logging.debug(f"Normalizing {audio_path}")
         sound = AudioSegment.from_file(audio_path)
         target_dBFS = -20.0
         change_in_dBFS = target_dBFS - sound.dBFS
         normalized_sound = sound.apply_gain(change_in_dBFS)
         
-        normalized_path = "normalized_" + os.path.basename(audio_path)
+        normalized_path = f"normalized_{os.path.basename(audio_path)}"
         normalized_sound.export(normalized_path, format="wav")
-        logging.debug(f"Normalized audio saved to {normalized_path}")
         return normalized_path
     except Exception as e:
         logging.error(f"[normalize_audio] Error: {e}")
         return audio_path
+
 
 
 def analyze_speech(user_audio, reference_audio):
@@ -512,36 +506,37 @@ def analyze_prosody(user_audio, reference_audio):
         return 0
 
 
-#def evaluate_speaking(user_audio, reference_audio):
-#    pitch_score, jitter_score, shimmer_score = analyze_speech(user_audio, reference_audio)
-#    prosody_score = analyze_prosody(user_audio, reference_audio)
-#    fluency_score = analyze_fluency(user_audio)
-#    speech_rate_score = analyze_speech_rate(user_audio)
-
-#    final_score = (
-#        pitch_score * 0.2 +
-#        jitter_score * 0.15 +
-#        shimmer_score * 0.15 +
-#        prosody_score * 0.2 +
-#        fluency_score * 0.15 +
-#        speech_rate_score * 0.15
-#    )
-
-#    return round(final_score, 2)
 def evaluate_speaking(user_audio, reference_audio):
-    pitch_score, jitter_score, shimmer_score = analyze_speech(user_audio, reference_audio)
-    prosody_score = analyze_prosody(user_audio, reference_audio)
-    
-    final_score = (
-        pitch_score * 0.25 +
-        jitter_score * 0.15 +
-        shimmer_score * 0.15 +
-        prosody_score * 0.25
-    )
-    
-    logging.debug(f"Final speaking score: {final_score}")
-    return round(final_score, 2)
+    pitch_score = analyze_pitch(user_audio, reference_audio)
+    return round(pitch_score, 2)
 
+def analyze_pitch(user_audio, reference_audio):
+    try:
+        user_sound, reference_sound = match_audio_length(user_audio, reference_audio)
+        if not user_sound or not reference_sound:
+            return 0
+        
+        user_pitch = user_sound.to_pitch().selected_array['frequency']
+        ref_pitch = reference_sound.to_pitch().selected_array['frequency']
+        
+        user_pitch = user_pitch[~np.isnan(user_pitch)]
+        ref_pitch = ref_pitch[~np.isnan(ref_pitch)]
+        
+        if len(user_pitch) < 5 or len(ref_pitch) < 5:
+            return 0
+        
+        max_length = max(len(user_pitch), len(ref_pitch))
+        def interpolate(contour, length):
+            return interp1d(np.linspace(0, 1, len(contour)), contour, kind="linear", fill_value="extrapolate")(np.linspace(0, 1, length))
+        
+        user_pitch = interpolate(user_pitch, max_length)
+        ref_pitch = interpolate(ref_pitch, max_length)
+        
+        pitch_diff = np.abs(np.mean(user_pitch) - np.mean(ref_pitch))
+        return max(0, 100 - pitch_diff * 5)
+    except Exception as e:
+        logging.error(f"[analyze_pitch] Error: {e}")
+        return 0
 @bot.message_handler(content_types=['voice'])
 def check_voice_answer(message):
     chat_id = message.chat.id
