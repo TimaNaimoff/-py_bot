@@ -511,7 +511,8 @@ def analyze_prosody(user_audio, reference_audio):
         if user_pitch is None or ref_pitch is None:
             return 0
         
-        distance, _ = fastdtw([user_pitch], [ref_pitch], dist=euclidean)
+        distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
+
         prosody_score = max(0, 100 - distance * 0.1)
         
         return prosody_score
