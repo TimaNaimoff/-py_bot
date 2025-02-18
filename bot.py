@@ -521,21 +521,16 @@ def analyze_prosody(user_audio, reference_audio):
         user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
         ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
 
-        if user_pitch.ndim != 1 or ref_pitch.ndim != 1:
-            logging.error("[analyze_prosody] Error: Pitch data is not 1-D")
-            return 0
-
         if user_pitch.size == 0 or ref_pitch.size == 0:
             logging.error("[analyze_prosody] Error: One of the pitch arrays is empty")
             return 0
 
-        # Делаем массивы одинаковой длины с интерполяцией
-        min_length = min(len(user_pitch), len(ref_pitch))
-        user_interp = interp1d(np.linspace(0, 1, len(user_pitch)), user_pitch, kind='linear')
-        ref_interp = interp1d(np.linspace(0, 1, len(ref_pitch)), ref_pitch, kind='linear')
+        # Приводим массивы к одинаковой длине
+        target_length = min(len(user_pitch), len(ref_pitch))  # Можно max(), если надо растягивать
+        user_pitch = resample_pitch(user_pitch, target_length)
+        ref_pitch = resample_pitch(ref_pitch, target_length)
 
-        user_pitch = user_interp(np.linspace(0, 1, min_length))
-        ref_pitch = ref_interp(np.linspace(0, 1, min_length))
+        logging.debug(f"[analyze_prosody] Final shapes: user_pitch={user_pitch.shape}, ref_pitch={ref_pitch.shape}")
 
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
@@ -545,6 +540,17 @@ def analyze_prosody(user_audio, reference_audio):
     except Exception as e:
         logging.error(f"[analyze_prosody] Error: {e}")
         return 0
+
+def resample_pitch(pitch, target_length):
+    """Интерполирует массив pitch до заданной длины."""
+    if len(pitch) == target_length:
+        return pitch  # Уже правильная длина
+
+    x_old = np.linspace(0, 1, len(pitch))
+    x_new = np.linspace(0, 1, target_length)
+
+    interpolator = interp1d(x_old, pitch, kind='linear', fill_value="extrapolate")
+    return interpolator(x_new)
 
 def evaluate_speaking(user_audio, reference_audio):
     """Оценивает произношение по высоте тона, просодии и распознаванию речи."""
