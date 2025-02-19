@@ -531,10 +531,20 @@ def analyze_prosody(user_audio, reference_audio):
         user_pitch = match_pitch_length(user_pitch, min_length)
         ref_pitch = match_pitch_length(ref_pitch, min_length)
 
-        logging.info(f"user_pitch: type={type(user_pitch)}, shape={user_pitch.shape}, ndim={user_pitch.ndim}, dtype={user_pitch.dtype}, has NaN={np.isnan(user_pitch).any()}")
-        logging.info(f"ref_pitch: type={type(ref_pitch)}, shape={ref_pitch.shape}, ndim={ref_pitch.ndim}, dtype={ref_pitch.dtype}, has NaN={np.isnan(ref_pitch).any()}")
-        user_pitch = user_pitch.flatten()
-        ref_pitch = ref_pitch.flatten()  
+        # Принудительно преобразуем к numpy 1D массиву
+        user_pitch = np.asarray(user_pitch).flatten()
+        ref_pitch = np.asarray(ref_pitch).flatten()
+
+        # Логируем окончательный результат
+        logging.info(f"Final user_pitch: type={type(user_pitch)}, shape={user_pitch.shape}, ndim={user_pitch.ndim}, dtype={user_pitch.dtype}")
+        logging.info(f"Final ref_pitch: type={type(ref_pitch)}, shape={ref_pitch.shape}, ndim={ref_pitch.ndim}, dtype={ref_pitch.dtype}")
+
+        # Проверяем, содержит ли массив вложенные списки (на всякий случай)
+        if isinstance(user_pitch[0], (list, np.ndarray)) or isinstance(ref_pitch[0], (list, np.ndarray)):
+            logging.error("user_pitch or ref_pitch contains nested arrays! Converting to 1D.")
+            user_pitch = np.hstack(user_pitch)
+            ref_pitch = np.hstack(ref_pitch)
+
         distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
         prosody_score = max(0, 100 - distance * 0.1)
 
