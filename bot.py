@@ -21,6 +21,8 @@ from scipy.spatial.distance import euclidean
 from fastdtw import fastdtw
 import soundfile as sf
 from difflib import SequenceMatcher
+from dtaidistance import dtw
+
 
 app = Flask(__name__)
 
@@ -510,50 +512,50 @@ def analyze_fluency(audio_path):
         return 0
 
 
+
+
 def analyze_prosody(user_audio, reference_audio):
     """Анализирует мелодику речи, используя динамическую временную нормализацию (DTW)."""
     try:
         user_pitch = analyze_pitch_2(user_audio)
         ref_pitch = analyze_pitch_2(reference_audio)
 
-        logging.info(f"user_pitch: {user_pitch}")
-        logging.info(f"ref_pitch: {ref_pitch}")
-
         if user_pitch is None or ref_pitch is None:
             logging.error("[analyze_prosody] Error: One of the pitch values is None")
             return 0
 
-        user_pitch = np.array(user_pitch, dtype=np.float64).flatten()
-        ref_pitch = np.array(ref_pitch, dtype=np.float64).flatten()
+        # Преобразуем в numpy массив с явным указанием float64
+        user_pitch = np.asarray(user_pitch, dtype=np.float64)
+        ref_pitch = np.asarray(ref_pitch, dtype=np.float64)
+
+        # Проверка на NaN и бесконечные значения
+        if not np.isfinite(user_pitch).all() or not np.isfinite(ref_pitch).all():
+            logging.error("[analyze_prosody] Error: Detected NaN or Inf in pitch arrays")
+            return 0
 
         # Приведение к одинаковой длине
         min_length = min(len(user_pitch), len(ref_pitch))
         user_pitch = match_pitch_length(user_pitch, min_length)
         ref_pitch = match_pitch_length(ref_pitch, min_length)
 
-        # Принудительно преобразуем к numpy 1D массиву
-        user_pitch = np.asarray(user_pitch).flatten()
-        ref_pitch = np.asarray(ref_pitch).flatten()
+        logging.info(
+            f"user_pitch: type={type(user_pitch)}, shape={user_pitch.shape}, dtype={user_pitch.dtype}, has NaN={np.isnan(user_pitch).any()}"
+        )
+        logging.info(
+            f"ref_pitch: type={type(ref_pitch)}, shape={ref_pitch.shape}, dtype={ref_pitch.dtype}, has NaN={np.isnan(ref_pitch).any()}"
+        )
 
-        # Логируем окончательный результат
-        logging.info(f"Final user_pitch: type={type(user_pitch)}, shape={user_pitch.shape}, ndim={user_pitch.ndim}, dtype={user_pitch.dtype}")
-        logging.info(f"Final ref_pitch: type={type(ref_pitch)}, shape={ref_pitch.shape}, ndim={ref_pitch.ndim}, dtype={ref_pitch.dtype}")
+        # Расчет расстояния DTW с помощью dtaidistance
+        distance = dtw.distance(user_pitch, ref_pitch)
 
-        # Проверяем, содержит ли массив вложенные списки (на всякий случай)
-        if isinstance(user_pitch[0], (list, np.ndarray)) or isinstance(ref_pitch[0], (list, np.ndarray)):
-            logging.error("user_pitch or ref_pitch contains nested arrays! Converting to 1D.")
-            user_pitch = np.hstack(user_pitch)
-            ref_pitch = np.hstack(ref_pitch)
-
-        distance, _ = fastdtw(user_pitch, ref_pitch, dist=euclidean)
+        # Вычисление оценки
         prosody_score = max(0, 100 - distance * 0.1)
-
         logging.debug(f"[analyze_prosody] Calculated prosody_score: {prosody_score}")
+
         return prosody_score
     except Exception as e:
-        logging.error(f"[analyze_prosody] Error: {e}", exc_info=True)
+        logging.error(f"[analyze_prosody] Unexpected Error: {e}", exc_info=True)
         return 0
-
 def match_pitch_length(pitch_array, target_length):
     """Растягивает или сжимает массив pitch_array до target_length"""
     if len(pitch_array) == target_length:
