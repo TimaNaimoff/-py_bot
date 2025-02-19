@@ -538,12 +538,12 @@ def analyze_prosody(user_audio, reference_audio):
         user_pitch = match_pitch_length(user_pitch, min_length)
         ref_pitch = match_pitch_length(ref_pitch, min_length)
 
-        logging.info(
-            f"user_pitch: type={type(user_pitch)}, shape={user_pitch.shape}, dtype={user_pitch.dtype}, has NaN={np.isnan(user_pitch).any()}"
-        )
-        logging.info(
-            f"ref_pitch: type={type(ref_pitch)}, shape={ref_pitch.shape}, dtype={ref_pitch.dtype}, has NaN={np.isnan(ref_pitch).any()}"
-        )
+        #logging.info(
+        #    f"user_pitch: type={type(user_pitch)}, shape={user_pitch.shape}, dtype={user_pitch.dtype}, has NaN={np.isnan(user_pitch).any()}"
+        #)
+        #logging.info(
+        #    f"ref_pitch: type={type(ref_pitch)}, shape={ref_pitch.shape}, dtype={ref_pitch.dtype}, has NaN={np.isnan(ref_pitch).any()}"
+        #)
 
         # Расчет расстояния DTW с помощью dtaidistance
         distance = dtw.distance(user_pitch, ref_pitch)
@@ -684,15 +684,10 @@ def check_voice_answer(message):
     audio_path = f"voice_{chat_id}.ogg"
     with open(audio_path, "wb") as f:
         f.write(downloaded_file)
-    logging.info(f"[check_voice_answer] Chat {chat_id}: Audio file saved as {audio_path}")
     
     wav_path = f"voice_{chat_id}.wav"
     AudioSegment.from_file(audio_path).set_channels(1).export(wav_path, format="wav")
-    
-    
-
     os.remove(audio_path)
-    logging.info(f"[check_voice_answer] Chat {chat_id}: Converted audio to WAV {wav_path}")
     
     recognizer = sr.Recognizer()
     with sr.AudioFile(wav_path) as source:
@@ -702,7 +697,7 @@ def check_voice_answer(message):
         recognized_text = recognizer.recognize_google(audio_data, language="en")
         logging.info(f"[check_voice_answer] Chat {chat_id}: Recognized text: {recognized_text}")
     except sr.UnknownValueError:
-        bot.send_message(chat_id, "🚫 Ошибка: Не удалось распознать речь. Попробуйте еще раз.")
+        bot.send_message(chat_id, "\ud83d\udeab Ошибка: Не удалось распознать речь. Попробуйте еще раз.")
         os.remove(wav_path)
         return
     except sr.RequestError as e:
@@ -711,14 +706,11 @@ def check_voice_answer(message):
         os.remove(wav_path)
         return
 
-    # Эталонный текст для сравнения
     reference_text = session["question_text"] if session.get("is_reading_task") else session["correct_answer"]
     
-    # Подсчет текстового совпадения
     text_similarity = SequenceMatcher(None, recognized_text.lower(), reference_text.lower()).ratio()
-    text_score = round(text_similarity * 50)  # До 50 баллов за текстовое совпадение
-
-    # Генерация TTS для эталона
+    text_score = round(text_similarity * 50)
+    
     try:
         if session.get("is_reading_task"):
             tts_file = "reference_tts.wav"
@@ -727,22 +719,39 @@ def check_voice_answer(message):
         else:
             tts_file = speak_text(reference_text)
         
-        logging.info(f"[check_voice_answer] Chat {chat_id}: TTS file generated {tts_file}")
-
-        # Аудио-анализ (оставшиеся 50 баллов)
         audio_score = evaluate_speaking(wav_path, tts_file)
         final_score = text_score + round(audio_score / 2)
-
         logging.info(f"[check_voice_answer] Chat {chat_id}: Final score = {final_score}")
 
-        bot.send_message(chat_id, f"🎯 Точность речи: {final_score}%")
-
-        if session.get("is_speaking_task"):
-            bot.send_audio(chat_id, open(wav_path, "rb"))
-
+        base_points = session["difficulty"]
+        awarded_points = base_points + (final_score / 10)
+        awarded_points = round(awarded_points, 2)
+        
+        user_id = message.from_user.id
+        username = message.from_user.username or message.from_user.first_name
+        update_user_stats(user_id, username, session["difficulty"], awarded_points)
+        
+        with sqlite3.connect("quiz.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT avg_percentage FROM leaderboard WHERE user_id = ?", (user_id,))
+            row = cursor.fetchone()
+            if row:
+                prev_avg = row[0]
+                new_avg = (prev_avg + final_score) / 2
+                cursor.execute("UPDATE leaderboard SET avg_percentage = ? WHERE user_id = ?", (new_avg, user_id))
+            else:
+                cursor.execute("INSERT INTO leaderboard (user_id, username, avg_percentage) VALUES (?, ?, ?)", (user_id, username, final_score))
+            conn.commit()
+        
+        lang_icon = get_language_icon(final_score)
+        bot.send_message(chat_id, f"🎯 Точность: {final_score}% {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
+        send_main_menu(chat_id)
+        session["new_question_sent"] = True
+        send_question(message)
+    
     except Exception as e:
         logging.error(f"[check_voice_answer] Chat {chat_id}: Error processing voice input - {e}")
-
+    
     finally:
         os.remove(wav_path)
         logging.info(f"[check_voice_answer] Chat {chat_id}: Removed temporary file {wav_path}")
