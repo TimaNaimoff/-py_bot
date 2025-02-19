@@ -582,7 +582,7 @@ def evaluate_speaking(user_audio, reference_audio):
     pitch_final_score = max(0, 100 - (pitch_difference ** 0.8) * 3)
     
     prosody_score = analyze_prosody(user_audio, reference_audio)
-    
+    logging.info(f"[analyze_prosody] prosody score: {prosody_score} , pitch score: {pitch_final_score}")
     final_score = round((pitch_final_score * 0.5) + (prosody_score * 0.5), 2)
     return final_score
 def convert_to_wav(audio_file):
