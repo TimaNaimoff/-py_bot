@@ -1,4 +1,191 @@
-откидной столик	hanging table  
+размещение	accommodation  
+агрессивный	aggressive  
+по-видимому	apparently  
+камуфляж	camouflage  
+категория	category  
+коллега	colleague  
+обязательство	commitment  
+совесть	conscience  
+сознательный	conscious  
+спор	controversy  
+переписка	correspondence  
+отчаянный	desperate  
+исчезать	disappear  
+дисциплина	discipline  
+смутить	embarrass  
+предприниматель	entrepreneur  
+преувеличивать	exaggerate  
+существование	existence  
+знакомый	familiar  
+очаровывать	fascinate  
+гарантия	guarantee  
+домогательство	harassment  
+иерархия	hierarchy  
+юмористический	humorous  
+незаменимый	indispensable  
+прививать	inoculate  
+непреодолимый	irresistible  
+обслуживание	maintenance  
+манёвр	maneuver  
+тысячелетие	millennium  
+разное	miscellaneous  
+заметный	noticeable  
+иногда	occasionally  
+упорство	perseverance  
+драматург	playwright  
+владение	possession  
+привилегия	privilege  
+произношение	pronunciation  
+анкета	questionnaire  
+рекомендовать	recommend  
+вспоминать	reminisce  
+расписание	schedule  
+отдельный	separate  
+заменять	supersede  
+сюрприз	surprise  
+порог	threshold  
+двенадцатый	twelfth  
+ненужный	unnecessary  
+вакуум	vacuum  
+акведук	aqueduct  
+акведук	aquifer  
+анитария	sanitation  
+беспрецедентный	unprecedented  
+больше	increasingly  
+взлетать	soar  
+взрыв	explosion  
+водоносный горизонт	aquifer  
+водохранилище	reservoir  
+восстанавливать	replenish  
+все же	nevertheless  
+встряска	shift  
+выкачанный	pumped  
+вызывать напряжение	tension  
+выращивать	thrive  
+выходная точка	outset  
+выходной	outset  
+вычет	withdrawal  
+галлон	gallon  
+гарантировать	ensure  
+грунтовые воды	groundwater  
+десятикратный	tenfold  
+до	till  
+доказательство	evidence  
+изымать	withdraw  
+изъятие	withdrawal  
+иначе	elsewhere  
+искусственный	artificial  
+исчезающий	endangered  
+канализация	sewer  
+канализация	sanitation  
+контроль	provision  
+лучший	well-built  
+медленно	gradually  
+напряжение	tension  
+начальная точка	outset  
+обеспечение	provision  
+откачанный	pumped  
+отправная точка	outset  
+планировка	layout  
+плотина	dam  
+повторять	reiterate  
+подвергать опасности	jeopardize  
+подтверждение	evidence  
+пополнять	replenish  
+почва	soil  
+постепенно	gradually  
+прибегать	resort  
+приблизительно	approximately  
+прочный	well-built  
+процветать	thrive  
+развитый	sophisticated  
+расширение	expansion  
+расходы	effort  
+регулировать	conserve  
+сдвиг	shift  
+скорее	rather  
+сложный	sophisticated  
+сооружение	aqueduct  
+сохранять	conserve  
+стремительно расти	soar  
+тем	nevertheless  
+темп	pace  
+трудности	effort  
+увеличенный	quadruple  
+угрожать	jeopardize  
+удерживать	conserve  
+уменьшенный	diminished  
+усилие	effort  
+ухудшать	degrade  
+четырёхкратный	quadruple  
+летучая мышь	bat  
+добыча	prey  
+избегать	avoid  
+препятствие	obstacle  
+привычка	habit  
+сильно	heavily  
+деятельность	activity  
+тщательно	thoroughly  
+отбор	selection  
+предпочитаемый	favoured  
+вероятный	probable  
+ночной	nocturnal  
+происхождение	ancestry  
+млекопитающее	mammal  
+относящийся к млекопитающим	mammalian  
+предок	ancestor  
+вероятно	probably  
+скребущий	scraping  
+таинственный	mysterious  
+появляться	emerge  
+дневной свет	daylight  
+значительный	substantial  
+очевидно	obviously  
+насекомое	insect  
+каким-то образом	somehow  
+глубоководный	deep-sea  
+кит	whale  
+мутный	muddy  
+затруднять	obstruct  
+рассеянный	scattered  
+манёвр	manoeuvre  
+рассматривать	consider  
+происходить	occur  
+производить	manufacture  
+светлячки	fireflies  
+товарищ	mate  
+чрезмерный	prohibitive  
+крошечный	tiny  
+укол	pinprick  
+открытый	exposed  
+прямо	directly  
+само	itself  
+значительно	vastly  
+обнаруживать	detect  
+доля	fraction  
+отражаться	bounce  
+обстановка	scene  
+следовательно	therefore  
+чрезвычайно	immensely  
+фара	headlight  
+освещать	illuminate  
+расход	expense  
+странный	weird  
+кроме	apart  
+необычный	uncanny  
+трехколесный велосипед	tricycle  
+конечность	limb  
+относить	refer  
+эхо	echo  
+шаг	footstep  
+присутствие	presence  
+принцип	principle  
+глубина	depth  
+изобретать	invent  
+подводная лодка	submarine  
+полагаться	rely  
+восхищение	admiration  
+откидной столик	tray table  
 мобиль	mobile  
 подгузник	diaper  
 подгузник	nappy  
@@ -21,7 +208,7 @@
 зимний комбинезон	snowsuit  
 пинетки	booties  
 боди	bodysuit  
-комбинезон	babygro  
+комбинезон	onesie  
 погремушка	rattle  
 игрушка	toy  
 мягкая игрушка	soft toy  
@@ -33,8 +220,8 @@
 скакалка	jump rope  
 скакалка	skipping rope  
 строительные блоки	building blocks  
-кирпичики	bricks  
-пазл	jigsaw puzzle  
+кирпичики	toy bricks  
+пазл	puzzle  
 игрушечная железная дорога	train set  
 юла	spinning top  
 кукла-марионетка	puppet  
@@ -89,20 +276,20 @@
 студент	student  
 выпускник	graduate  
 изучать предмет	to study a subject  
-повторять	to review  
-готовиться к экзамену	to revise  
+повторять	to revise  
+готовиться к экзамену	to prepare for an exam  
 сдавать экзамен	to sit an exam  
-сдать 	to pass  
-провалить 	to fail  
-пересдавать	to resit  
+сдать	to pass  
+провалить	to fail  
+пересдавать	to retake  
 восхищаться кем-то, уважать	to look up to someone  
 воспитывать кого-то	to bring up someone / bring someone up  
-ладить с кем-то	to get along/get on with someone  
+ладить с кем-то	to get along with someone / to get on with someone  
 пойти в кого-то, унаследовать черты	to take after someone  
 вырастать	to grow up  
 поссориться с кем-то	to fall out with someone  
 влюбиться в кого-то	to fall in love with someone  
-расстаться с кем-то	to break up with someone  
+расстаться с кем-то	to break up with someone / to split up with someone  
 отдаляться друг от друга	to drift apart  
 подружиться с кем-то	to make friends with someone  
 близкий друг	a close friend  
@@ -115,4 +302,3 @@
 проявить твердость	to put your foot down  
 заступиться за кого-то	to stick up for someone  
 души не чаять в ком-то	to think the world of someone  
-

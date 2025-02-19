@@ -1,5 +1,175 @@
-hanging table	откидной столик  
-mobile	мобиль 
+accommodation	размещение
+aggressive	агрессивный
+apparently	по-видимому
+camouflage	камуфляж
+category	категория
+colleague	коллега
+commitment	обязательство
+conscience	совесть
+conscious	сознательный
+controversy	спор
+correspondence	переписка
+desperate	отчаянный
+disappear	исчезать
+discipline	дисциплина
+embarrass	смутить
+entrepreneur	предприниматель
+exaggerate	преувеличивать
+existence	существование
+familiar	знакомый
+fascinate	очаровывать
+guarantee	гарантия
+harassment	домогательство
+hierarchy	иерархия
+humorous	юмористический
+indispensable	незаменимый
+inoculate	прививать
+irresistible	непреодолимый
+maintenance	обслуживание
+maneuver	манёвр
+millennium	тысячелетие
+miscellaneous	разное
+noticeable	заметный
+occasionally	иногда
+perseverance	упорство
+playwright	драматург
+possession	владение
+privilege	привилегия
+pronunciation	произношение
+questionnaire	анкета
+recommend	рекомендовать
+reminisce	вспоминать
+schedule	расписание
+separate	отдельный
+supersede	заменять
+surprise	сюрприз
+threshold	порог
+twelfth	двенадцатый
+unnecessary	ненужный
+vacuum	вакуум
+entwine	переплетаться  
+gradually	постепенно  
+increasingly	больше  
+sophisticated	сложный  
+effort	усилие  
+dam	плотина  
+aqueduct	акведук  
+layout	планировка  
+bagpipes	волынка  
+well-built	прочный  
+sewer	канализация  
+explosion	взрыв  
+unprecedented	беспрецедентный  
+pace	темп  
+soar	взлетать  
+mainly	главным образом  
+expansion	расширение  
+artificial	искусственный  
+spin	вращать  
+till	до  
+inferior	худший  
+reiterate	повторять  
+sanitation	санитария  
+preventable	предотвратимый  
+evidence	доказательство  
+jeopardize	угрожать  
+reservoir	водохранилище  
+endangered	исчезающий  
+withdrawal	изъятие  
+thrive	процветать  
+degrade	ухудшать  
+soil	почва  
+groundwater	грунтовые воды  
+aquifer	водоносный горизонт  
+pumped	откачанный  
+replenish	пополнять  
+elsewhere	иначе  
+tension	напряжение  
+outset	отправная точка  
+shift	сдвиг  
+provision	обеспечение  
+ensure	гарантировать  
+rather	скорее  
+resort	прибегать  
+nevertheless	тем не менее  
+predict	предсказывать  
+diminished	уменьшенный  
+soar	стремительно расти  
+withdraw	изымать  
+tenfold	десятикратный  
+quadruple	четырёхкратный  
+conserve	сохранять  
+approximately	приблизительно  
+gallon	галлон  
+bat	летучая мышь  
+prey	добыча  
+avoid	избегать  
+obstacle	препятствие  
+habit	привычка  
+heavily	сильно  
+activity	деятельность  
+thoroughly	тщательно  
+selection	отбор  
+favoured	предпочитаемый  
+probable	вероятный  
+nocturnal	ночной  
+ancestry	происхождение  
+mammal	млекопитающее  
+mammalian	относящийся к млекопитающим  
+ancestor	предок  
+probably	вероятно  
+scraping	скребущий  
+mysterious	таинственный  
+emerge	появляться  
+daylight	дневной свет  
+substantial	значительный  
+obviously	очевидно  
+insect	насекомое  
+somehow	каким-то образом  
+deep-sea	глубоководный  
+whale	кит  
+muddy	мутный  
+obstruct	затруднять  
+scattered	рассеянный  
+manoeuvre	манёвр  
+consider	рассматривать  
+occur	происходить  
+manufacture	производить  
+fireflies	светлячки  
+mate	товарищ  
+prohibitive	чрезмерный  
+tiny	крошечный  
+pinprick	укол  
+exposed	открытый  
+directly	прямо  
+itself	само  
+vastly	значительно  
+detect	обнаруживать  
+fraction	доля  
+bounce	отражаться  
+scene	обстановка  
+therefore	следовательно  
+immensely	чрезвычайно  
+headlight	фара  
+illuminate	освещать  
+expense	расход  
+weird	странный  
+apart	кроме  
+uncanny	необычный  
+tricycle	трехколесный велосипед  
+limb	конечность  
+refer	относить  
+echo	эхо  
+footstep	шаг  
+presence	присутствие  
+principle	принцип  
+depth	глубина  
+invent	изобретать  
+submarine	подводная лодка  
+rely	полагаться  
+admiration	восхищение  
+tray table	откидной столик  
+mobile	мобиль  
 diaper	подгузник  
 nappy	подгузник  
 crib	детская кроватка  
@@ -8,7 +178,7 @@ high chair	детский стульчик для кормления
 pacifier	пустышка  
 stroller	прогулочная коляска  
 baby carriage	детская коляска  
-dummy	пустышка
+dummy	пустышка  
 buggy	прогулочная коляска  
 pram	детская коляска  
 bottle	бутылочка  
@@ -21,7 +191,7 @@ romper suit	комбинезон
 snowsuit	зимний комбинезон  
 booties	пинетки  
 bodysuit	боди  
-babygro	комбинезон  
+onesie	комбинезон  
 rattle	погремушка  
 toy	игрушка  
 soft toy	мягкая игрушка  
@@ -33,8 +203,8 @@ doll’s house	кукольный домик
 jump rope	скакалка  
 skipping rope	скакалка  
 building blocks	строительные блоки  
-bricks	кирпичики
-jigsaw puzzle	пазл  
+toy bricks	кирпичики  
+puzzle	пазл  
 train set	игрушечная железная дорога  
 spinning top	юла  
 puppet	кукла-марионетка  
@@ -89,20 +259,20 @@ lecturer	преподаватель
 student	студент  
 graduate	выпускник  
 to study a subject	изучать предмет  
-to review	повторять  
-to revise	готовиться к экзамену  
+to revise	повторять  
+to prepare for an exam	готовиться к экзамену  
 to sit an exam	сдавать экзамен  
-to pass	сдать   
-to fail	провалить   
-to resit	пересдавать  
+to pass	сдать  
+to fail	провалить  
+to retake	пересдавать  
 to look up to someone	восхищаться кем-то, уважать  
 to bring up someone / bring someone up	воспитывать кого-то  
-to get along/get on with someone	ладить с кем-то  
+to get along with someone / to get on with someone	ладить с кем-то  
 to take after someone	пойти в кого-то, унаследовать черты  
 to grow up	вырастать  
 to fall out with someone	поссориться с кем-то  
 to fall in love with someone	влюбиться в кого-то  
-to break up with someone	расстаться с кем-то  
+to break up with someone / to split up with someone	расстаться с кем-то  
 to drift apart	отдаляться друг от друга  
 to make friends with someone	подружиться с кем-то  
 a close friend	близкий друг  
@@ -114,4 +284,4 @@ to click with someone	найти общий язык с кем-то
 to bump into someone	случайно встретить кого-то  
 to put your foot down	проявить твердость  
 to stick up for someone	заступиться за кого-то  
-to think the world of someone	души не чаять в ком-то
+to think the world of someone	души не чаять в ком-то  
