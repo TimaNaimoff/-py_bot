@@ -692,12 +692,12 @@ def check_voice_answer(message):
     recognizer = sr.Recognizer()
     with sr.AudioFile(wav_path) as source:
         audio_data = recognizer.record(source)
-
+    
     try:
         recognized_text = recognizer.recognize_google(audio_data, language="en")
         logging.info(f"[check_voice_answer] Chat {chat_id}: Recognized text: {recognized_text}")
     except sr.UnknownValueError:
-        bot.send_message(chat_id, "\ud83d\udeab Ошибка: Не удалось распознать речь. Попробуйте еще раз.")
+        bot.send_message(chat_id, "🚫 Ошибка: Не удалось распознать речь. Попробуйте еще раз.")
         os.remove(wav_path)
         return
     except sr.RequestError as e:
@@ -705,9 +705,8 @@ def check_voice_answer(message):
         bot.send_message(chat_id, "⚠ Ошибка сервиса распознавания речи. Попробуйте позже.")
         os.remove(wav_path)
         return
-
-    reference_text = session["question_text"] if session.get("is_reading_task") else session["correct_answer"]
     
+    reference_text = session["question_text"] if session.get("is_reading_task") else session["correct_answer"]
     text_similarity = SequenceMatcher(None, recognized_text.lower(), reference_text.lower()).ratio()
     text_score = round(text_similarity * 50)
     
@@ -722,10 +721,9 @@ def check_voice_answer(message):
         audio_score = evaluate_speaking(wav_path, tts_file)
         final_score = text_score + round(audio_score / 2)
         logging.info(f"[check_voice_answer] Chat {chat_id}: Final score = {final_score}")
-
+        
         base_points = session["difficulty"]
-        awarded_points = base_points + (final_score / 10)
-        awarded_points = round(awarded_points, 2)
+        awarded_points = round(base_points + (final_score / 10), 2)
         
         user_id = message.from_user.id
         username = message.from_user.username or message.from_user.first_name
@@ -740,15 +738,17 @@ def check_voice_answer(message):
                 new_avg = (prev_avg + final_score) / 2
                 cursor.execute("UPDATE leaderboard SET avg_percentage = ? WHERE user_id = ?", (new_avg, user_id))
             else:
-                cursor.execute("INSERT INTO leaderboard (user_id, username, avg_percentage) VALUES (?, ?, ?)", (user_id, username, final_score))
+                new_avg = final_score
+                cursor.execute("INSERT INTO leaderboard (user_id, username, avg_percentage) VALUES (?, ?, ?)", (user_id, username, new_avg))
             conn.commit()
         
         lang_icon = get_language_icon(final_score)
-        bot.send_message(chat_id, f"🎯 Точность: {final_score}% {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg if row else final_score}")
+        bot.send_message(chat_id, f"🎯 Точность: {final_score}% {lang_icon}\n🏆 Получено баллов: {awarded_points}\n📊 Новый средний процент: {new_avg}")
+        
         send_main_menu(chat_id)
         session["new_question_sent"] = True
         send_question(message)
-    
+        
     except Exception as e:
         logging.error(f"[check_voice_answer] Chat {chat_id}: Error processing voice input - {e}")
     
