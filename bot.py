@@ -862,7 +862,7 @@ def check_answer(message):
         
         feedback = feedback_messages.get(difficulty, f"❌ {username}, неверно. Попробуй снова.")
         hint = get_hint(correct_answer)
-        bot.send_message(chat_id, f"{feedback}\nПодсказка: {hint}")
+        bot.send_message(chat_id, f"{feedback}\nПравильное слово: {correct_answer}")
         time.sleep(4)
     
     if session.get("new_question_sent"):
