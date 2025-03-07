@@ -43,8 +43,11 @@ WEBHOOK_URL = f"{RENDER_URL}/{TOKEN}"
 #WEBHOOK_URL = f"https://{RENDER_URL}/{TOKEN}"
 LEVEL_EMOJIS = {
     1: "🐣", 2: "🌱", 3: "🌿", 4: "🌳", 5: "🔥",
-    6: "⚡", 7: "💎", 8: "👑", 9: "🚀", 10: "💥"
+    6: "⚡", 7: "💎", 8: "👑", 9: "🚀", 10: "💥",
+    11: "🌟", 12: "💫", 13: "🦸‍♂️", 14: "🦸‍♀️", 15: "🌈",
+    16: "🪐", 17: "👽", 18: "💀", 19: "⚔️", 20: "💣"
 }
+
 
 logging.basicConfig(
     filename='bot.log', 
@@ -80,7 +83,7 @@ def speak_text(text, filename="Озвучка.mp3"):
 def get_level(score):
     level = 1
     required_points = 100
-    while score >= required_points and level < 10:
+    while score >= required_points and level < 20:
         level += 1
         required_points = int(required_points * 1.5)
     return level
