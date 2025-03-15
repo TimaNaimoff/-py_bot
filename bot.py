@@ -816,32 +816,37 @@ def get_transcription(word):
         print(f"Ошибка получения транскрипции: {e}")
         return ""
 
+import re
+
+def sanitize_input(text):
+    """Удаляет потенциально опасные символы (кроме букв, цифр и пробелов)"""
+    return re.sub(r"[^\w\s]", "", text).strip()[:100]  # Ограничиваем длину
+
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions and not is_button(message.text) and not message.text.startswith("#"))
 def check_answer(message):
     chat_id = message.chat.id
-    username = message.from_user.username or message.from_user.first_name
+    username = sanitize_input(message.from_user.username or message.from_user.first_name)
     session = user_sessions.get(chat_id)
     user_id = message.from_user.id
 
     if not session:
         return
     
-    # Добавлена проверка, если задание - голосовое, игнорируем текстовый ответ
     if session.get("is_speaking_task"):
         logging.debug(f"[check_answer] Chat {chat_id}: Игнорируем текст, так как задание голосовое.")
         return
 
-    correct_answer = session["correct_answer"].lower()
+    correct_answer = sanitize_input(session["correct_answer"].lower())
     difficulty = session["difficulty"]
     elapsed_time = int(time.time() - session["start_time"])
-    user_answer = message.text.strip().lower()
-    
+    user_answer = sanitize_input(message.text.lower())
+
     log_event(chat_id, username, f"Ответил: {user_answer} за {elapsed_time} сек (Правильный: {correct_answer})")
-    
+
     if user_answer == correct_answer:
         update_user_stats(user_id, username, difficulty, elapsed_time)
         transcription = get_transcription(correct_answer)
-        
+
         success_messages = {
             1: f"✅ {username}, Ну, неплохо! 🎉\nСлово: {correct_answer} {transcription}",
             3: f"🎯 {username}, А ты не промах 🚀\nСлово: {correct_answer} {transcription}",
@@ -849,9 +854,9 @@ def check_answer(message):
             10: f"🔥 {username}, Умничка 💪\nСлово: {correct_answer} {transcription}",
             15: f"🎻 {username}, Может, станешь музыкантом? Великолепно ✨\nСлово: {correct_answer} {transcription}",
         }
-        
+
         success_message = success_messages.get(difficulty, f"✅ {username}, правильно! Так держать! ✨\nСлово: {correct_answer} {transcription}")
-        
+
         bot.send_message(chat_id, success_message)
         del user_sessions[chat_id]
     else:
@@ -862,18 +867,19 @@ def check_answer(message):
             10: f"🧠💨 {username}, мозг вышел из чата",
             15: f"🤯👂 {username}, уши, вы существуете ?!?!?!?",
         }
-        
+
         feedback = feedback_messages.get(difficulty, f"❌ {username}, неверно. Попробуй снова.")
         hint = get_hint(correct_answer)
         bot.send_message(chat_id, f"{feedback}\nПравильное слово: {correct_answer}")
         time.sleep(4)
-    
+
     if session.get("new_question_sent"):
         return
-    
+
     send_main_menu(chat_id)
     session["new_question_sent"] = True
     send_question(message)
+
 
 
 @bot.message_handler(commands=['global_rating'])
